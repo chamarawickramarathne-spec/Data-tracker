@@ -1,0 +1,23 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for DataTracker",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-start-dragging",
+    "core:window:allow-center",
+    "notification:default",
+    "notification:allow-show",
+    "notification:allow-request-permission",
+    "notification:allow-is-permission-granted",
+    "autostart:default"
+  ]
+}

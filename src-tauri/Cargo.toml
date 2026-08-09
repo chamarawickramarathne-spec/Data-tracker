@@ -1,0 +1,37 @@
+[package]
+name = "data-tracker"
+version = "1.0.1"
+description = "Windows Data Usage Monitor"
+authors = ["DataTracker"]
+edition = "2021"
+
+[lib]
+name = "data_tracker_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-notification = "2"
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_System_Threading",
+    "Win32_Foundation",
+    "Win32_Networking_WinSock",
+    "Win32_System_IO",
+    "Win32_System_Diagnostics_Etw",
+    "Win32_System_Diagnostics_ToolHelp",
+] }
+dark-light = "1"
+log = "0.4"
+env_logger = "0.11"
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
