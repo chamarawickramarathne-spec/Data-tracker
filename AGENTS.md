@@ -2,6 +2,19 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.0.2 - Single-instance enforcement (v1.0.2)
+
+**Date:** 2026-08-09
+
+### What was fixed
+- **Second launch spawned a new instance**: launching `data-tracker.exe` while the app was already running (e.g. tray-hidden) started a duplicate process and the tray icon/DB could conflict.
+- **Fix**: added `tauri-plugin-single-instance` (`src-tauri/Cargo.toml`), registered first in `src-tauri/src/lib.rs`. A second launch now exits immediately and the existing "main" window is shown, unminimized and focused.
+
+### Verified
+- `pnpm lint` and `tsc -b` pass. Rust compiles clean via `pnpm tauri:build`.
+- Built `data-tracker.exe` + `DataTracker_1.0.2_x64-setup.exe` copied to `releases/`.
+- Released via git: annotated tag `v1.0.2` pushed; GitHub Release `v1.0.2` created with `releases/data-tracker.exe` asset so installed 1.0.1 copies auto-update. `medial_support.txt` regenerated.
+
 ## Mod 1.0.1 - Git-based update feature + version in header (v1.0.1)
 
 **Date:** 2026-08-09
