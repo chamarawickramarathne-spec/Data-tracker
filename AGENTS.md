@@ -17,7 +17,7 @@ This file is the modification memory for the Data Tracker application. Every cha
 ### Verified
 - `pnpm lint` and `tsc -b` pass. Rust compiles clean via `pnpm tauri:build`.
 - Built `data-tracker.exe` + `DataTracker_1.0.1_x64-setup.exe` copied to `releases/`.
-- Released via git: annotated tags `v1.0.0` (baseline, asset = 1.0.0 exe) and `v1.0.1` (asset = `releases/data-tracker.exe`) pushed; `medial_support.txt` regenerated.
+- Released via git: repo `chamarawickramarathne-spec/Data-tracker` (public); annotated tags `v1.0.0` (baseline) and `v1.0.1` pushed; GitHub Release `v1.0.1` created with `releases/data-tracker.exe` asset (anonymous download verified HTTP 200, ~17.5 MB). `medial_support.txt` regenerated.
 
 ## Mod 1.0.0 - Initial Release (v1.0.0)
 
