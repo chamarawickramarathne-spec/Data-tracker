@@ -813,7 +813,7 @@ dependencies = [
 
 [[package]]
 name = "data-tracker"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "chrono",
  "dark-light",

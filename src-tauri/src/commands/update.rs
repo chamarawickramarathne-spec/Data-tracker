@@ -50,7 +50,7 @@ fn run_check_for_updates() -> Result<UpdateInfo, String> {
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
 
-    let url = format!("https://api.github.com/repos/{}/releases/latest", UPDATE_REPO);
+    let url = format!("https://github.com/{}/releases/latest", UPDATE_REPO);
     let response = client
         .get(&url)
         .send()
@@ -58,18 +58,14 @@ fn run_check_for_updates() -> Result<UpdateInfo, String> {
     let status = response.status();
 
     if !status.is_success() {
-        return Err(format!(
-            "Update server returned HTTP {status} (possibly rate-limited or no releases yet)"
-        ));
+        return Err(format!("Update server returned HTTP {status} (no releases yet?)"));
     }
 
-    let body: serde_json::Value = response
-        .json()
-        .map_err(|e| format!("Failed to read update server response: {e}"))?;
-    let tag = body
-        .get("tag_name")
-        .and_then(|t| t.as_str())
-        .ok_or_else(|| "Update server response is missing tag_name".to_string())?;
+    let final_url = response.url().clone();
+    let tag = final_url
+        .path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .ok_or_else(|| "Update server returned an unexpected URL".to_string())?;
     let latest = tag.strip_prefix('v').unwrap_or(tag).to_string();
     let latest = if version_gt(&latest, &current) { Some(latest) } else { None };
 
