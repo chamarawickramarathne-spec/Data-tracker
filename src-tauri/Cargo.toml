@@ -1,6 +1,6 @@
 [package]
 name = "data-tracker"
-version = "1.0.2"
+version = "1.0.3"
 description = "Windows Data Usage Monitor"
 authors = ["DataTracker"]
 edition = "2021"
@@ -35,4 +35,4 @@ windows-sys = { version = "0.59", features = [
 dark-light = "1"
 log = "0.4"
 env_logger = "0.11"
-reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls", "json"] }

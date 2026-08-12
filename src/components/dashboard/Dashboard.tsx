@@ -12,7 +12,7 @@ type UpdateStatus =
   | { state: 'uptodate' }
   | { state: 'downloading'; version: string }
   | { state: 'restarting' }
-  | { state: 'failed' }
+  | { state: 'failed'; message: string }
 
 export function Dashboard() {
   const { networkSpeed } = useAppStore()
@@ -37,9 +37,10 @@ export function Dashboard() {
         setUpdate({ state: 'uptodate' })
         setTimeout(() => setUpdate({ state: 'idle' }), 3000)
       }
-    } catch {
-      setUpdate({ state: 'failed' })
-      setTimeout(() => setUpdate({ state: 'idle' }), 3000)
+    } catch (e) {
+      const message = typeof e === 'string' ? e : e instanceof Error ? e.message : String(e)
+      setUpdate({ state: 'failed', message })
+      setTimeout(() => setUpdate({ state: 'idle' }), 5000)
     }
   }
 
@@ -85,6 +86,7 @@ export function Dashboard() {
           <button
             onClick={checkForUpdates}
             disabled={update.state === 'checking' || update.state === 'downloading' || update.state === 'restarting'}
+            title={update.state === 'failed' ? update.message : undefined}
             className="flex items-center gap-1.5 text-xs font-medium text-primary border border-primary/30 rounded-full px-2.5 py-1 hover:bg-primary/10 transition-colors disabled:opacity-60 disabled:cursor-default"
           >
             {buttonIcon}

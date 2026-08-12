@@ -1,8 +1,10 @@
 use serde::Serialize;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
+use std::time::Duration;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
 pub const UPDATE_REPO: &str = "chamarawickramarathne-spec/Data-tracker";
 pub const UPDATE_EXE_NAME: &str = "data-tracker.exe";
@@ -11,30 +13,6 @@ pub const UPDATE_EXE_NAME: &str = "data-tracker.exe";
 pub struct UpdateInfo {
     pub current: String,
     pub latest: Option<String>,
-}
-
-fn parse_versions(output: &str) -> Vec<String> {
-    output
-        .lines()
-        .filter_map(|line| {
-            let tag = line.split("refs/tags/").nth(1)?;
-            let tag = tag.trim();
-            if let Some(peeled) = tag.strip_suffix("^{}") {
-                Some(peeled.to_string())
-            } else {
-                Some(tag.to_string())
-            }
-        })
-        .filter_map(|tag| {
-            let version = tag.strip_prefix('v').unwrap_or(&tag).to_string();
-            let parts: Vec<&str> = version.split('.').collect();
-            if parts.len() == 3 && parts.iter().all(|p| p.chars().all(|c| c.is_ascii_digit())) {
-                Some(version)
-            } else {
-                None
-            }
-        })
-        .collect()
 }
 
 fn parse_semver(version: &str) -> Option<(u64, u64, u64)> {
@@ -66,26 +44,34 @@ pub async fn check_for_updates() -> Result<UpdateInfo, String> {
 fn run_check_for_updates() -> Result<UpdateInfo, String> {
     let current = env!("CARGO_PKG_VERSION").to_string();
 
-    let output = Command::new("git")
-        .args([
-            "ls-remote",
-            "--tags",
-            &format!("https://github.com/{}.git", UPDATE_REPO),
-        ])
-        .output()
-        .map_err(|e| format!("Git not available: {e}"))?;
+    let client = reqwest::blocking::Client::builder()
+        .timeout(REQUEST_TIMEOUT)
+        .user_agent("DataTracker-update-check")
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
 
-    if !output.status.success() {
-        return Err("Failed to contact update server".to_string());
+    let url = format!("https://api.github.com/repos/{}/releases/latest", UPDATE_REPO);
+    let response = client
+        .get(&url)
+        .send()
+        .map_err(|e| format!("Failed to contact update server: {e}"))?;
+    let status = response.status();
+
+    if !status.is_success() {
+        return Err(format!(
+            "Update server returned HTTP {status} (possibly rate-limited or no releases yet)"
+        ));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    let versions = parse_versions(&stdout);
-
-    let latest = versions
-        .into_iter()
-        .filter(|v| version_gt(v, &current))
-        .max_by(|a, b| parse_semver(a).cmp(&parse_semver(b)));
+    let body: serde_json::Value = response
+        .json()
+        .map_err(|e| format!("Failed to read update server response: {e}"))?;
+    let tag = body
+        .get("tag_name")
+        .and_then(|t| t.as_str())
+        .ok_or_else(|| "Update server response is missing tag_name".to_string())?;
+    let latest = tag.strip_prefix('v').unwrap_or(tag).to_string();
+    let latest = if version_gt(&latest, &current) { Some(latest) } else { None };
 
     Ok(UpdateInfo { current, latest })
 }
@@ -113,7 +99,14 @@ fn run_apply_update(repo: &str, version: &str) -> Result<(), String> {
         repo, version, UPDATE_EXE_NAME
     );
 
-    let response = reqwest::blocking::get(&url).map_err(|e| format!("Download failed: {e}"))?;
+    let response = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(60))
+        .user_agent("DataTracker-update-check")
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))?
+        .get(&url)
+        .send()
+        .map_err(|e| format!("Download failed: {e}"))?;
     if !response.status().is_success() {
         return Err(format!("Download failed: HTTP {}", response.status()));
     }

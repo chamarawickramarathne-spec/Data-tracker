@@ -16,6 +16,7 @@ dist-ssr
 src-tauri/target
 src-tauri/gen
 releases
+cmd.exe
 
 # Sell folder (do not upload)
 datatracker Sell
