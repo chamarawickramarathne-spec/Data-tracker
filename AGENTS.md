@@ -2,6 +2,21 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.0.4 - Rate-limit-free update check + restored site download asset (v1.0.4)
+
+**Date:** 2026-08-12
+
+### What was fixed
+- **"Check for updates" failing with HTTP 403**: v1.0.3 switched the check to the anonymous GitHub REST API (`api.github.com/.../releases/latest`), which is rate-limited to 60 requests/hour per IP. When the quota is exhausted the API returns 403, so the app showed "Check failed". 
+- **Site download link 404**: the site's link `.../releases/download/v1.0.3/DataTrackerSetup.exe` broke because `DataTrackerSetup.exe` was dropped from the v1.0.3 release (it existed in v1.0.2). 
+- **Fix 1 - no API rate limit** (`src-tauri/src/commands/update.rs`): `run_check_for_updates` now GETs `https://github.com/{repo}/releases/latest`, which 302-redirects to `/releases/tag/vX.Y.Z`; the tag is parsed from the final URL (reqwest follows the redirect, 15s timeout, `DataTracker-update-check` user-agent). Same `UpdateInfo { current, latest }` contract and same error surfacing in `Dashboard.tsx`.
+- **Fix 2 - restore site asset**: `DataTrackerSetup.exe` (= the NSIS installer, renamed) uploaded to the v1.0.3 release (HTTP 200 verified) and carried on every release going forward (v1.0.4 included).
+
+### Verified
+- `pnpm lint` and `tsc -b` pass (only pre-existing warnings). Rust compiles clean via `pnpm tauri:build`.
+- Built `data-tracker.exe` (v1.0.4) + `DataTracker_1.0.4_x64-setup.exe` copied to `releases/`.
+- Released via git: tag `v1.0.4` pushed; GitHub Release `v1.0.4` created with three assets: `data-tracker.exe` (in-app self-update), `DataTrackerSetup.exe` (site download), `DataTracker_1.0.4_x64-setup.exe`. All anonymous downloads verified HTTP 200. `releases/latest` verified to redirect to `/releases/tag/v1.0.4`. `medial_support.txt` regenerated.
+
 ## Mod 1.0.3 - Update check via GitHub API, no git required (v1.0.3)
 
 **Date:** 2026-08-12
