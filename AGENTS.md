@@ -2,6 +2,21 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.0.3 - Update check via GitHub API, no git required (v1.0.3)
+
+**Date:** 2026-08-12
+
+### What was fixed
+- **"Check for updates" failing with "Check failed"**: the update check spawned `git ls-remote` against the repo, which failed fast in the app's runtime environment (git installed per-user at `%LOCALAPPDATA%\Programs\git` may be missing from the PATH inherited by a GUI-launched process), or git exited non-zero. The UI swallowed the real error message so only a generic "Check failed" was shown.
+- **Fix 1 - no more git dependency** (`src-tauri/src/commands/update.rs`): `run_check_for_updates` now calls the GitHub REST API `GET https://api.github.com/repos/{repo}/releases/latest` via the existing `reqwest` (blocking, rustls + `json` feature added to `Cargo.toml`) with a 15s timeout and `DataTracker-update-check` user-agent. It parses `tag_name` and compares against `CARGO_PKG_VERSION` with the existing semver logic, keeping the same `UpdateInfo { current, latest }` contract. Removes the documented "git required" limitation.
+- **Fix 2 - apply download timeout**: the release download in `run_apply_update` now uses a 60s-timeout client instead of bare `reqwest::blocking::get`.
+- **Fix 3 - surface real errors** (`src/components/dashboard/Dashboard.tsx`): the failed state now captures and carries the actual error message; the button shows it as a tooltip (`title`) and the state resets after 5s.
+
+### Verified
+- `pnpm lint` and `tsc -b` pass (only pre-existing warnings). Rust compiles clean via `pnpm tauri:build`.
+- Built `data-tracker.exe` (v1.0.3) + `DataTracker_1.0.3_x64-setup.exe` copied to `releases/`. Note: copy-releases needs the app closed (destination exe locked while running).
+- Released via git: tag `v1.0.3` pushed; GitHub Release `v1.0.3` created with `data-tracker.exe` + `DataTracker_1.0.3_x64-setup.exe`. Anonymous exe download verified HTTP 200. GitHub API `latest` endpoint returns `tag_name: v1.0.3` (anonymous rate limit 60/hr per IP; the app reports HTTP 403 clearly if it ever hits it). `medial_support.txt` regenerated.
+
 ## Mod 1.0.2 - Single-instance enforcement (v1.0.2)
 
 **Date:** 2026-08-09
