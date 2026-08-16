@@ -51,12 +51,28 @@ pub struct DailyBreakdownRow {
     pub total_bytes: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppHourlyBreakdownRow {
+    pub hour: u32,
+    pub download_bytes: u64,
+    pub upload_bytes: u64,
+    pub total_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppDailyBreakdownRow {
+    pub day: u32,
+    pub download_bytes: u64,
+    pub upload_bytes: u64,
+    pub total_bytes: u64,
+}
+
 pub fn get_settings(conn: &Connection) -> Result<UserSettings> {
     conn.query_row(
         "SELECT daily_limit_bytes, monthly_limit_bytes, warning_threshold_pct,
                 danger_threshold_pct, notifications_enabled, sound_alerts_enabled,
                 auto_start_enabled, minimize_to_tray, theme, data_retention_days,
-                selected_adapter
+                selected_adapter, daily_summary_enabled, daily_summary_time
          FROM user_settings WHERE id = 'default'",
         [],
         |row| {
@@ -72,6 +88,8 @@ pub fn get_settings(conn: &Connection) -> Result<UserSettings> {
                 theme: row.get(8)?,
                 data_retention_days: row.get(9)?,
                 selected_adapter: row.get(10)?,
+                daily_summary_enabled: row.get::<_, i32>(11)? != 0,
+                daily_summary_time: row.get(12)?,
             })
         },
     )
@@ -90,6 +108,8 @@ pub fn update_settings(
     theme: Option<String>,
     data_retention_days: Option<i32>,
     selected_adapter: Option<String>,
+    daily_summary_enabled: Option<bool>,
+    daily_summary_time: Option<String>,
 ) -> Result<UserSettings> {
     conn.execute(
         "UPDATE user_settings SET
@@ -104,6 +124,8 @@ pub fn update_settings(
             theme = COALESCE(?9, theme),
             data_retention_days = COALESCE(?10, data_retention_days),
             selected_adapter = COALESCE(?11, selected_adapter),
+            daily_summary_enabled = COALESCE(?12, daily_summary_enabled),
+            daily_summary_time = COALESCE(?13, daily_summary_time),
             updated_at = datetime('now')
         WHERE id = 'default'",
         params![
@@ -118,6 +140,8 @@ pub fn update_settings(
             theme,
             data_retention_days,
             selected_adapter,
+            daily_summary_enabled.map(|v| v as i32),
+            daily_summary_time,
         ],
     )?;
 
@@ -347,6 +371,103 @@ pub fn get_daily_breakdown_for_month(conn: &Connection, year: i32, month: u32) -
 
     let rows = stmt.query_map(params![start_date, end_date], |row| {
         Ok(DailyBreakdownRow {
+            day: row.get(0)?,
+            download_bytes: row.get(1)?,
+            upload_bytes: row.get(2)?,
+            total_bytes: row.get(3)?,
+        })
+    })?;
+
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+pub fn upsert_app_daily_usage(
+    conn: &Connection,
+    date: &str,
+    app_name: &str,
+    upload_bytes: u64,
+    download_bytes: u64,
+) -> Result<()> {
+    conn.execute(
+        "INSERT INTO daily_app_usage (date, app_name, upload_bytes, download_bytes, total_bytes)
+         VALUES (?1, ?2, ?3, ?4, ?3 + ?4)
+         ON CONFLICT(date, app_name) DO UPDATE SET
+            upload_bytes = upload_bytes + excluded.upload_bytes,
+            download_bytes = download_bytes + excluded.download_bytes,
+            total_bytes = total_bytes + excluded.total_bytes",
+        params![date, app_name, upload_bytes, download_bytes],
+    )?;
+    Ok(())
+}
+
+pub fn upsert_app_monthly_usage(
+    conn: &Connection,
+    year: i32,
+    month: u32,
+    app_name: &str,
+    upload_bytes: u64,
+    download_bytes: u64,
+) -> Result<()> {
+    conn.execute(
+        "INSERT INTO monthly_app_usage (year, month, app_name, upload_bytes, download_bytes, total_bytes)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?4 + ?5)
+         ON CONFLICT(year, month, app_name) DO UPDATE SET
+            upload_bytes = upload_bytes + excluded.upload_bytes,
+            download_bytes = download_bytes + excluded.download_bytes,
+            total_bytes = total_bytes + excluded.total_bytes",
+        params![year, month as i32, app_name, upload_bytes, download_bytes],
+    )?;
+    Ok(())
+}
+
+pub fn get_app_hourly_breakdown(
+    conn: &Connection,
+    app_name: &str,
+    date: &str,
+) -> Result<Vec<AppHourlyBreakdownRow>> {
+    let mut stmt = conn.prepare(
+        "SELECT CAST(strftime('%H', timestamp) AS INTEGER) as hour,
+                COALESCE(SUM(download_bytes), 0),
+                COALESCE(SUM(upload_bytes), 0),
+                COALESCE(SUM(total_bytes), 0)
+         FROM app_usage_records WHERE app_name = ?1 AND date(timestamp) = ?2
+         GROUP BY hour ORDER BY hour",
+    )?;
+
+    let rows = stmt.query_map(params![app_name, date], |row| {
+        Ok(AppHourlyBreakdownRow {
+            hour: row.get(0)?,
+            download_bytes: row.get(1)?,
+            upload_bytes: row.get(2)?,
+            total_bytes: row.get(3)?,
+        })
+    })?;
+
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+pub fn get_app_daily_breakdown_month(
+    conn: &Connection,
+    app_name: &str,
+    year: i32,
+    month: u32,
+) -> Result<Vec<AppDailyBreakdownRow>> {
+    let start_date = format!("{}-{:02}-01", year, month);
+    let next_month = if month == 12 { 1 } else { month + 1 };
+    let next_year = if month == 12 { year + 1 } else { year };
+    let end_date = format!("{}-{:02}-01", next_year, next_month);
+
+    let mut stmt = conn.prepare(
+        "SELECT CAST(strftime('%d', date) AS INTEGER) as day,
+                COALESCE(SUM(download_bytes), 0),
+                COALESCE(SUM(upload_bytes), 0),
+                COALESCE(SUM(total_bytes), 0)
+         FROM daily_app_usage WHERE app_name = ?1 AND date >= ?2 AND date < ?3
+         GROUP BY date ORDER BY day",
+    )?;
+
+    let rows = stmt.query_map(params![app_name, start_date, end_date], |row| {
+        Ok(AppDailyBreakdownRow {
             day: row.get(0)?,
             download_bytes: row.get(1)?,
             upload_bytes: row.get(2)?,

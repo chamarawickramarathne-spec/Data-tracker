@@ -36,12 +36,6 @@ export function Sidebar() {
           )
         })}
       </nav>
-
-      <div className="p-3 border-t border-border">
-        <div className="text-xs text-muted-foreground text-center">
-          v1.0.0
-        </div>
-      </div>
     </aside>
   )
 }

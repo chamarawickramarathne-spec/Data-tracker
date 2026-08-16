@@ -18,6 +18,8 @@ pub struct SettingsResponse {
     pub theme: String,
     pub data_retention_days: i32,
     pub selected_adapter: String,
+    pub daily_summary_enabled: bool,
+    pub daily_summary_time: String,
 }
 
 #[tauri::command]
@@ -36,6 +38,8 @@ pub fn get_settings(db: State<'_, DbState>) -> Result<SettingsResponse, String> 
         theme: settings.theme,
         data_retention_days: settings.data_retention_days,
         selected_adapter: settings.selected_adapter,
+        daily_summary_enabled: settings.daily_summary_enabled,
+        daily_summary_time: settings.daily_summary_time,
     })
 }
 
@@ -54,6 +58,8 @@ pub fn update_settings(
     theme: Option<String>,
     data_retention_days: Option<i32>,
     selected_adapter: Option<String>,
+    daily_summary_enabled: Option<bool>,
+    daily_summary_time: Option<String>,
 ) -> Result<SettingsResponse, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let settings = crate::db::queries::update_settings(
@@ -69,6 +75,8 @@ pub fn update_settings(
         theme,
         data_retention_days,
         selected_adapter,
+        daily_summary_enabled,
+        daily_summary_time,
     )
     .map_err(|e| e.to_string())?;
 
@@ -93,5 +101,7 @@ pub fn update_settings(
         theme: settings.theme,
         data_retention_days: settings.data_retention_days,
         selected_adapter: settings.selected_adapter,
+        daily_summary_enabled: settings.daily_summary_enabled,
+        daily_summary_time: settings.daily_summary_time,
     })
 }

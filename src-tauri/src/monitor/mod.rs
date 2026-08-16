@@ -1,5 +1,7 @@
 pub mod adapter;
 pub mod aggregator;
+pub mod app_usage;
+pub mod alerts;
 
 use tauri::AppHandle;
 use tauri::Emitter;
@@ -7,6 +9,11 @@ use tauri::Manager;
 
 pub async fn start_monitoring(app: AppHandle) {
     log::info!("Starting network monitoring engine");
+
+    let alerts_handle = app.clone();
+    tokio::spawn(async move {
+        crate::monitor::alerts::run(alerts_handle).await;
+    });
 
     let monitor_handle = app.clone();
     tokio::spawn(async move {
@@ -23,10 +30,12 @@ pub async fn start_monitoring(app: AppHandle) {
         let mut last_adapter_name = String::new();
         let mut last_download_speed: u64 = 0;
         let mut last_upload_speed: u64 = 0;
+        let app_usage = crate::monitor::app_usage::AppUsageTracker::new();
 
         loop {
             tokio::select! {
                 _ = tick_interval.tick() => {
+                    app_usage.capture();
                     if let Ok(stats) = adapter::get_adapter_stats() {
                         let current_in = stats.bytes_received;
                         let current_out = stats.bytes_sent;
@@ -76,6 +85,7 @@ pub async fn start_monitoring(app: AppHandle) {
                     let down = session_in;
                     let peak_up = last_upload_speed;
                     let peak_down = last_download_speed;
+                    let app_samples = app_usage.flush();
 
                     session_in = 0;
                     session_out = 0;
@@ -101,6 +111,18 @@ pub async fn start_monitoring(app: AppHandle) {
                         let _ = crate::db::queries::upsert_monthly_usage(
                             &conn, year, month, &adapter, up, down, peak_up, peak_down,
                         );
+
+                        for sample in app_samples {
+                            let _ = crate::db::queries::insert_app_usage(
+                                &conn, &timestamp, &sample.app_name, "", sample.upload_bytes, sample.download_bytes,
+                            );
+                            let _ = crate::db::queries::upsert_app_daily_usage(
+                                &conn, &date, &sample.app_name, sample.upload_bytes, sample.download_bytes,
+                            );
+                            let _ = crate::db::queries::upsert_app_monthly_usage(
+                                &conn, year, month, &sample.app_name, sample.upload_bytes, sample.download_bytes,
+                            );
+                        }
                     });
                 }
             }

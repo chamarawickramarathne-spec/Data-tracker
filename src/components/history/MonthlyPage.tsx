@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { formatBytes, getMonthName } from '@/lib/utils'
-import { CalendarDays, ArrowDown, ArrowUp, TrendingUp } from 'lucide-react'
+import { CalendarDays, ArrowDown, ArrowUp, TrendingUp, Trophy } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -12,6 +12,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
+import { AppDetailPanel } from './AppDetailPanel'
+import { TopAppsChart } from './TopAppsChart'
 
 interface MonthlyUsageData {
   year: number
@@ -42,8 +44,10 @@ export function MonthlyPage() {
   const [usage, setUsage] = useState<MonthlyUsageData | null>(null)
   const [appBreakdown, setAppBreakdown] = useState<AppUsageSummary[]>([])
   const [dailyBreakdown, setDailyBreakdown] = useState<DailyDataPoint[]>([])
+  const [selectedApp, setSelectedApp] = useState<string | null>(null)
 
   useEffect(() => {
+    setSelectedApp(null)
     loadMonthlyData()
   }, [selectedYear, selectedMonth])
 
@@ -161,6 +165,15 @@ export function MonthlyPage() {
         </div>
       </div>
 
+      {/* Top 5 Apps */}
+      <div className="bg-card rounded-xl border border-border p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy className="w-4 h-4 text-primary" />
+          <h2 className="text-lg font-semibold text-card-foreground">Top 5 Apps This Month</h2>
+        </div>
+        <TopAppsChart apps={appBreakdown} />
+      </div>
+
       {/* App Breakdown */}
       <div className="bg-card rounded-xl border border-border p-6">
         <h2 className="text-lg font-semibold text-card-foreground mb-4">Top Apps This Month</h2>
@@ -171,7 +184,13 @@ export function MonthlyPage() {
         ) : (
           <div className="space-y-3">
             {appBreakdown.slice(0, 15).map((app) => (
-              <div key={app.appName} className="flex items-center gap-4">
+              <div
+                key={app.appName}
+                onClick={() => setSelectedApp(selectedApp === app.appName ? null : app.appName)}
+                className={`flex items-center gap-4 p-2 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${
+                  selectedApp === app.appName ? 'bg-primary/5' : ''
+                }`}
+              >
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
                   {app.appName.charAt(0).toUpperCase()}
                 </div>
@@ -193,6 +212,15 @@ export function MonthlyPage() {
               </div>
             ))}
           </div>
+        )}
+        {selectedApp && (
+          <AppDetailPanel
+            appName={selectedApp}
+            period="month"
+            year={selectedYear}
+            month={selectedMonth}
+            onClose={() => setSelectedApp(null)}
+          />
         )}
       </div>
     </div>

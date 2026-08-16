@@ -1,6 +1,6 @@
 [package]
 name = "data-tracker"
-version = "1.0.4"
+version = "1.0.6"
 description = "Windows Data Usage Monitor"
 authors = ["DataTracker"]
 edition = "2021"
@@ -31,6 +31,8 @@ windows-sys = { version = "0.59", features = [
     "Win32_System_IO",
     "Win32_System_Diagnostics_Etw",
     "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_UI_WindowsAndMessaging",
 ] }
 dark-light = "1"
 log = "0.4"

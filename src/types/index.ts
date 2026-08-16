@@ -62,6 +62,8 @@ export interface UserSettings {
   theme: string;
   dataRetentionDays: number;
   selectedAdapter: string;
+  dailySummaryEnabled: boolean;
+  dailySummaryTime: string;
 }
 
 export interface ThemeInfo {

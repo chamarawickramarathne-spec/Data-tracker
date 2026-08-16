@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { formatBytes, getTodayString } from '@/lib/utils'
-import { Calendar, ArrowDown, ArrowUp, TrendingUp } from 'lucide-react'
+import { Calendar, ArrowDown, ArrowUp, TrendingUp, Trophy } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -12,6 +12,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
+import { AppDetailPanel } from './AppDetailPanel'
+import { TopAppsChart } from './TopAppsChart'
 
 interface DailyUsageData {
   date: string
@@ -41,8 +43,10 @@ export function DailyPage() {
   const [usage, setUsage] = useState<DailyUsageData | null>(null)
   const [appBreakdown, setAppBreakdown] = useState<AppUsageSummary[]>([])
   const [hourlyBreakdown, setHourlyBreakdown] = useState<HourlyDataPoint[]>([])
+  const [selectedApp, setSelectedApp] = useState<string | null>(null)
 
   useEffect(() => {
+    setSelectedApp(null)
     loadDailyData()
   }, [selectedDate])
 
@@ -150,6 +154,15 @@ export function DailyPage() {
         </div>
       </div>
 
+      {/* Top 5 Apps */}
+      <div className="bg-card rounded-xl border border-border p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy className="w-4 h-4 text-primary" />
+          <h2 className="text-lg font-semibold text-card-foreground">Top 5 Apps Today</h2>
+        </div>
+        <TopAppsChart apps={appBreakdown} />
+      </div>
+
       {/* App Breakdown */}
       <div className="bg-card rounded-xl border border-border p-6">
         <h2 className="text-lg font-semibold text-card-foreground mb-4">Usage by Application</h2>
@@ -171,7 +184,13 @@ export function DailyPage() {
               </thead>
               <tbody>
                 {appBreakdown.map((app) => (
-                  <tr key={app.appName} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
+                  <tr
+                    key={app.appName}
+                    onClick={() => setSelectedApp(selectedApp === app.appName ? null : app.appName)}
+                    className={`border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer ${
+                      selectedApp === app.appName ? 'bg-primary/5' : ''
+                    }`}
+                  >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
@@ -199,6 +218,14 @@ export function DailyPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {selectedApp && (
+          <AppDetailPanel
+            appName={selectedApp}
+            period="day"
+            date={selectedDate}
+            onClose={() => setSelectedApp(null)}
+          />
         )}
       </div>
     </div>

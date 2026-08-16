@@ -33,5 +33,25 @@ if (fs.existsSync(sourceInstaller)) {
 if (copied === 0) {
   console.warn('No build artifacts found at:', sourceExe, sourceInstaller);
 } else {
+  const versioned = new RegExp(/^DataTracker_.+_x64-setup\.exe$/);
+  const newest = fs
+    .readdirSync(targetDir)
+    .filter((f) => versioned.test(f))
+    .sort()
+    .pop();
+
+  for (const file of fs.readdirSync(targetDir)) {
+    if (versioned.test(file) && file !== newest) {
+      fs.unlinkSync(path.join(targetDir, file));
+      console.log(`Removed old installer: ${file}`);
+    }
+  }
+
+  const setupName = 'DataTrackerSetup.exe';
+  if (newest) {
+    fs.copyFileSync(path.join(targetDir, newest), path.join(targetDir, setupName));
+    console.log(`Site asset refreshed: ${setupName}`);
+  }
+
   console.log(`Done. Copied ${copied} file(s) to releases/`);
 }

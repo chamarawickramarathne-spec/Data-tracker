@@ -26,6 +26,8 @@ interface SettingsData {
   theme: string
   dataRetentionDays: number
   selectedAdapter: string
+  dailySummaryEnabled: boolean
+  dailySummaryTime: string
 }
 
 export function SettingsPage() {
@@ -36,6 +38,8 @@ export function SettingsPage() {
   const [dangerThreshold, setDangerThreshold] = useState(95)
   const [notifications, setNotifications] = useState(true)
   const [soundAlerts, setSoundAlerts] = useState(false)
+  const [dailySummaryEnabled, setDailySummaryEnabled] = useState(false)
+  const [dailySummaryTime, setDailySummaryTime] = useState('20:00')
   const [autoStart, setAutoStart] = useState(true)
   const [minimizeToTray, setMinimizeToTray] = useState(true)
   const [retentionDays, setRetentionDays] = useState(90)
@@ -55,6 +59,8 @@ export function SettingsPage() {
       setDangerThreshold(data.dangerThresholdPct)
       setNotifications(data.notificationsEnabled)
       setSoundAlerts(data.soundAlertsEnabled)
+      setDailySummaryEnabled(data.dailySummaryEnabled)
+      setDailySummaryTime(data.dailySummaryTime)
       setAutoStart(data.autoStartEnabled)
       setMinimizeToTray(data.minimizeToTray)
       setRetentionDays(data.dataRetentionDays)
@@ -76,6 +82,8 @@ export function SettingsPage() {
         dangerThresholdPct: dangerThreshold,
         notificationsEnabled: notifications,
         soundAlertsEnabled: soundAlerts,
+        dailySummaryEnabled: dailySummaryEnabled,
+        dailySummaryTime: dailySummaryTime,
         autoStartEnabled: autoStart,
         minimizeToTray: minimizeToTray,
         dataRetentionDays: retentionDays,
@@ -189,6 +197,25 @@ export function SettingsPage() {
             value={soundAlerts}
             onChange={setSoundAlerts}
           />
+          <ToggleSetting
+            label="Daily Usage Summary"
+            description="Receive a summary notification of today's usage"
+            value={dailySummaryEnabled}
+            onChange={setDailySummaryEnabled}
+          />
+          {dailySummaryEnabled && (
+            <div>
+              <label className="block text-sm font-medium text-card-foreground mb-1.5">
+                Summary Time
+              </label>
+              <input
+                type="time"
+                value={dailySummaryTime}
+                onChange={(e) => setDailySummaryTime(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          )}
         </div>
       </div>
 

@@ -83,6 +83,8 @@ pub fn run() {
             commands::usage::get_usage_history,
             commands::usage::get_hourly_breakdown,
             commands::usage::get_daily_breakdown,
+            commands::usage::get_app_hourly_breakdown,
+            commands::usage::get_app_daily_breakdown_month,
             commands::settings::get_settings,
             commands::settings::update_settings,
             commands::theme::get_system_theme,

@@ -19,6 +19,8 @@ pub struct UserSettings {
     pub theme: String,
     pub data_retention_days: i32,
     pub selected_adapter: String,
+    pub daily_summary_enabled: bool,
+    pub daily_summary_time: String,
 }
 
 pub fn init_database(path: &Path) -> Result<Connection> {
@@ -42,6 +44,8 @@ pub fn init_database(path: &Path) -> Result<Connection> {
             theme TEXT NOT NULL DEFAULT 'auto',
             data_retention_days INTEGER NOT NULL DEFAULT 90,
             selected_adapter TEXT NOT NULL DEFAULT '',
+            daily_summary_enabled INTEGER NOT NULL DEFAULT 0,
+            daily_summary_time TEXT NOT NULL DEFAULT '20:00',
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
@@ -127,6 +131,14 @@ pub fn init_database(path: &Path) -> Result<Connection> {
         "INSERT OR IGNORE INTO user_settings (id) VALUES ('default')",
         [],
     )?;
+
+    // Migrations for databases created before these columns existed
+    for migration in [
+        "ALTER TABLE user_settings ADD COLUMN daily_summary_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE user_settings ADD COLUMN daily_summary_time TEXT NOT NULL DEFAULT '20:00'",
+    ] {
+        let _ = conn.execute(migration, []);
+    }
 
     Ok(conn)
 }

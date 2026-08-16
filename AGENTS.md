@@ -2,6 +2,44 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.0.6 - Per-app tracking + detail panel + usage notifications (v1.0.6)
+
+**Date:** 2026-08-16
+
+### Feature 1 - Network stats detail panel (per-app tracking)
+- **Per-app data was never recorded before this mod**: `app_usage_records` / `daily_app_usage` / `monthly_app_usage` existed but were never written, so the app tables were always empty.
+- **New per-app tracking engine** (`src-tauri/src/monitor/app_usage.rs`): IP Helper sampling. Every 3s tick it snapshots established IPv4 TCP connections (`GetExtendedTcpTable` owner-PID) and reads per-connection cumulative byte counters via `GetPerTcpConnectionEStats` (`TCP_ESTATS_DATA`, `SetPerTcpConnectionEStats` enables collection). Deltas per PID accumulate in memory; every 60s save tick they are flushed, resolved to process names via ToolHelp32 (`CreateToolhelp32Snapshot`/`Process32FirstW`), and written to `app_usage_records` + rolled up into `daily_app_usage` / `monthly_app_usage` (`upsert_app_daily_usage` / `upsert_app_monthly_usage`).
+- **New queries** (`db/queries.rs`): `get_app_hourly_breakdown(app, date)` (per-hour from records) and `get_app_daily_breakdown_month(app, year, month)` (per-day from daily rollup). Commands `get_app_hourly_breakdown` / `get_app_daily_breakdown_month` registered in `lib.rs`.
+- **UI**: clickable app rows on Daily/Monthly pages open an inline detail panel (`src/components/history/AppDetailPanel.tsx`) with a per-hour (day) or per-day (month) bar chart + download/upload/total chips. New "Top 5 Apps" horizontal-bar chart (`src/components/history/TopAppsChart.tsx`) on both history pages.
+- **Known limitation**: TCP/IPv4 only (windows-sys 0.59 has no `GetPerUdpEndpointEStats`), sampling-based, so short-lived/UDP (QUIC) flows can be undercounted. Per-app history starts empty after this build.
+
+### Feature 3 - Limit notifications + daily usage summary
+- **Limits were never enforced before this mod**: the settings toggles existed but nothing checked usage or sent notifications.
+- **New alerts loop** (`src-tauri/src/monitor/alerts.rs`), spawned from `start_monitoring` on a 60s interval: compares today's/month's usage vs `dailyLimitBytes`/`monthlyLimitBytes` at the warning %/danger %/100% levels. An in-memory `AlertState` sends each alert **once per period** (daily flags reset on new day, monthly on new month). Alerts are Windows toasts via the already-registered `tauri-plugin-notification` (`NotificationExt`); if `sound_alerts_enabled`, a system sound plays (`MessageBeep`, added `Win32_System_Diagnostics_Debug` + `Win32_UI_WindowsAndMessaging` features to `Cargo.toml`). Both limit alerts and summary are gated on `notifications_enabled`.
+- **Daily usage summary**: new settings `daily_summary_enabled` (default off) + `daily_summary_time` (default `20:00`, HH:MM). When local time reaches the configured time and today's summary hasn't fired yet, a toast shows today's download/upload/total. Plumbed through `UserSettings` (db struct + schema + migration `ALTER TABLE ADD COLUMN` ignored if exists), `get_settings`/`update_settings`, `SettingsResponse`, TS types, and a toggle + `type="time"` input in the Settings > Notifications section.
+- **`scripts/copy-releases.cjs` now prunes old versioned installers** and always refreshes `DataTrackerSetup.exe` (site asset) so `releases/` keeps only the current version.
+
+### Verified
+- `pnpm lint` + `tsc -b` pass (pre-existing warnings only: exhaustive-deps, unused SettingsPage imports).
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+- `pnpm tauri:build` built `data-tracker.exe` + NSIS + MSI; `releases/` now holds only `data-tracker.exe`, `DataTracker_1.0.6_x64-setup.exe`, `DataTrackerSetup.exe`.
+- Not yet committed or released (awaiting user approval).
+
+## Mod 1.0.5 - UI fixes + update auto-restart (v1.0.5)
+
+**Date:** 2026-08-16
+
+### What was fixed
+- **Removed hardcoded version in sidebar bottom** (`src/components/layout/Sidebar.tsx`): the left-bottom footer showing `v1.0.0` (which was also wrong) is gone. The version pill lives only on the Live Dashboard header (`Dashboard.tsx`).
+- **Speed chart now live while the window is open, not only when focused** (`src/components/layout/AppLayout.tsx`): the `tauri://blur` listener set `isWindowVisible = false` whenever the window lost focus, so the `network-speed` listener skipped updates and the Speed History chart froze. Blur listener removed; `isWindowVisible` now only goes `false` when the window is actually hidden to tray (Titlebar close). `tauri://focus` (restore from tray / single-instance) and the `onResized` -> `isVisible()` safety check remain.
+- **Update now auto-restarts without waiting for the user to close the app** (`src-tauri/src/commands/update.rs`): the `apply_update.cmd` script loops `del` until the running exe unlocks and then swaps + relaunches, but the app never exited, so it spun forever until the user manually closed it. `apply_update` now takes `app: tauri::AppHandle` and, after the download + script launch succeed, spawns an async task that sleeps ~800ms (so the UI can show "Restarting...") then calls `app.exit(0)`. The script's own wait loop then swaps `data-tracker.exe` and relaunches automatically. Inner `Result` now unwrapped with `??` (no unused-must-use warning).
+- **Repo cleanup**: removed unused tracked files - `src/assets/react.svg`, `src/assets/vite.svg`, `src/assets/hero.png`, `src/App.css` (never imported), `public/icons.svg` (never referenced); deleted the now-empty `src/assets/` folder and the `datatracker Sell/` folder (already gitignored). `releases/` now keeps only `data-tracker.exe`, `DataTracker_1.0.5_x64-setup.exe`, `DataTrackerSetup.exe` (old 1.0.0-1.0.4 installers removed, per "keep only new version" rule). Root `cmd.exe` kept by user request.
+
+### Verified
+- `pnpm lint` and `tsc -b` pass (only pre-existing warnings). Rust compiles clean via `pnpm tauri:build` (6 pre-existing dead-code warnings, no new ones).
+- Built `data-tracker.exe` (v1.0.5) + `DataTracker_1.0.5_x64-setup.exe` copied to `releases/`, plus `DataTrackerSetup.exe` (renamed installer, site asset).
+- Not yet committed or released (awaiting user approval).
+
 ## Mod 1.0.4 - Rate-limit-free update check + restored site download asset (v1.0.4)
 
 **Date:** 2026-08-12

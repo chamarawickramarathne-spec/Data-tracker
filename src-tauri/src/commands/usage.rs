@@ -57,6 +57,24 @@ pub struct DailyBreakdownEntry {
     pub total_bytes: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppHourlyBreakdownEntry {
+    pub hour: u32,
+    pub upload_bytes: u64,
+    pub download_bytes: u64,
+    pub total_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppDailyBreakdownEntry {
+    pub day: u32,
+    pub upload_bytes: u64,
+    pub download_bytes: u64,
+    pub total_bytes: u64,
+}
+
 #[tauri::command]
 pub fn get_daily_usage(
     db: State<'_, DbState>,
@@ -167,6 +185,41 @@ pub fn get_daily_breakdown(
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_daily_breakdown_for_month(&conn, year, month)
         .map(|rows| rows.into_iter().map(|r| DailyBreakdownEntry {
+            day: r.day,
+            upload_bytes: r.upload_bytes,
+            download_bytes: r.download_bytes,
+            total_bytes: r.total_bytes,
+        }).collect())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_app_hourly_breakdown(
+    db: State<'_, DbState>,
+    app_name: String,
+    date: String,
+) -> Result<Vec<AppHourlyBreakdownEntry>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    crate::db::queries::get_app_hourly_breakdown(&conn, &app_name, &date)
+        .map(|rows| rows.into_iter().map(|r| AppHourlyBreakdownEntry {
+            hour: r.hour,
+            upload_bytes: r.upload_bytes,
+            download_bytes: r.download_bytes,
+            total_bytes: r.total_bytes,
+        }).collect())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_app_daily_breakdown_month(
+    db: State<'_, DbState>,
+    app_name: String,
+    year: i32,
+    month: u32,
+) -> Result<Vec<AppDailyBreakdownEntry>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    crate::db::queries::get_app_daily_breakdown_month(&conn, &app_name, year, month)
+        .map(|rows| rows.into_iter().map(|r| AppDailyBreakdownEntry {
             day: r.day,
             upload_bytes: r.upload_bytes,
             download_bytes: r.download_bytes,

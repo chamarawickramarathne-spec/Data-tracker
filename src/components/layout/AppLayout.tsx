@@ -43,11 +43,7 @@ export function AppLayout() {
       setIsWindowVisible(true)
     })
 
-    const unlistenTauriBlur = listen('tauri://blur', () => {
-      setIsWindowVisible(false)
-    })
-
-    // Listen for network speed updates - skip if window hidden
+    // Listen for network speed updates - skip if window hidden to tray
     const unlistenSpeed = listen<{
       downloadSpeed: number
       uploadSpeed: number
@@ -65,7 +61,6 @@ export function AppLayout() {
     return () => {
       unlistenSpeed.then((fn) => fn())
       unlistenTauriFocus.then((fn) => fn())
-      unlistenTauriBlur.then((fn) => fn())
       unlistenFocus.then((fn) => fn())
     }
   }, [])

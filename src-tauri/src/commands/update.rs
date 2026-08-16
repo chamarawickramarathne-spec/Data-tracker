@@ -73,10 +73,22 @@ fn run_check_for_updates() -> Result<UpdateInfo, String> {
 }
 
 #[tauri::command]
-pub async fn apply_update(repo: String, version: String) -> Result<(), String> {
+pub async fn apply_update(
+    app: tauri::AppHandle,
+    repo: String,
+    version: String,
+) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || run_apply_update(&repo, &version))
         .await
-        .map_err(|e| format!("Update apply failed: {e}"))?
+        .map_err(|e| format!("Update apply failed: {e}"))??;
+
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+        handle.exit(0);
+    });
+
+    Ok(())
 }
 
 fn run_apply_update(repo: &str, version: &str) -> Result<(), String> {
