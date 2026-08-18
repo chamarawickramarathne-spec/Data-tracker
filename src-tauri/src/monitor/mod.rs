@@ -79,16 +79,32 @@ pub async fn start_monitoring(app: AppHandle) {
                         continue;
                     }
 
+                    let adapter_total = session_in + session_out;
                     let app = monitor_handle.clone();
                     let adapter = last_adapter_name.clone();
                     let up = session_out;
                     let down = session_in;
                     let peak_up = last_upload_speed;
                     let peak_down = last_download_speed;
-                    let app_samples = app_usage.flush();
+                    let mut app_samples = app_usage.flush();
 
                     session_in = 0;
                     session_out = 0;
+
+                    let raw_app_total: u64 = app_samples.iter().map(|s| s.upload_bytes + s.download_bytes).sum();
+                    if adapter_total > 0 && raw_app_total > adapter_total {
+                        let scale = adapter_total as f64 / raw_app_total as f64;
+                        log::warn!(
+                            "App data ({}) exceeds adapter ({}), scaling by {:.4}",
+                            crate::monitor::aggregator::format_bytes(raw_app_total),
+                            crate::monitor::aggregator::format_bytes(adapter_total),
+                            scale,
+                        );
+                        for s in &mut app_samples {
+                            s.upload_bytes = (s.upload_bytes as f64 * scale) as u64;
+                            s.download_bytes = (s.download_bytes as f64 * scale) as u64;
+                        }
+                    }
 
                     tokio::task::spawn_blocking(move || {
                         let Some(state) = app.try_state::<crate::db::DbState>() else { return };

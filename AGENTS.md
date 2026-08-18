@@ -2,6 +2,20 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.0.7 - Chart data bugfixes: upload/download swap + TCP EStats struct fix + adapter cap (v1.0.7)
+
+**Date:** 2026-08-18
+
+### What was fixed
+- **Upload/download labels swapped** (`src-tauri/src/monitor/app_usage.rs:93-96`): `capture()` accumulated `delta_in` (DataBytesIn = received/download) in `entry.0` and `delta_out` (DataBytesOut = sent/upload) in `entry.1`, but `flush()` mapped `entry.0` → `upload_bytes` and `entry.1` → `download_bytes`. Fixed by swapping the field assignments so DataBytesIn → download_bytes and DataBytesOut → upload_bytes.
+- **Wrong TCP EStats struct size** (`src-tauri/src/monitor/app_usage.rs:22-38,181-182`): `windows-sys` 0.59 `TCP_ESTATS_DATA_ROD_v0` is 96 bytes (14 fields) but the actual Windows SDK `TCP_ESTATS_DATA_ROD_v0` is 56 bytes (4 u64 + 6 u32). Passing `rod_size=96` to `GetPerTcpConnectionEStats` may cause the OS to write data at incorrect offsets or behave unpredictably. Defined a local `#[repr(C)] TcpEstatsDataRod` struct matching the SDK's 56-byte layout and used its size for `rod_size`.
+- **Per-app data exceeds adapter data** (`src-tauri/src/monitor/mod.rs:82-107`): Added a sanity check: if the sum of all per-app sample bytes in a save cycle exceeds the adapter-level session bytes, all app samples are proportionally scaled down to match the adapter total. Logs a warning when this happens.
+
+### Verified
+- `pnpm lint` + `tsc -b` pass (pre-existing warnings only).
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+- `pnpm tauri:build` built `data-tracker.exe` (v1.0.7) + NSIS + MSI; `releases/` holds `data-tracker.exe`, `DataTracker_1.0.7_x64-setup.exe`, `DataTrackerSetup.exe`.
+
 ## Mod 1.0.6 - Per-app tracking + detail panel + usage notifications (v1.0.6)
 
 **Date:** 2026-08-16

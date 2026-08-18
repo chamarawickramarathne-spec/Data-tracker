@@ -19,6 +19,24 @@ pub struct AppUsageSample {
     pub download_bytes: u64,
 }
 
+/// Correct TCP_ESTATS_DATA_ROD_v0 matching the Windows SDK (56 bytes).
+/// windows-sys 0.59 defines a 96-byte struct that doesn't match the SDK;
+/// passing the wrong size to GetPerTcpConnectionEStats corrupts the read.
+#[repr(C)]
+#[allow(dead_code)]
+struct TcpEstatsDataRod {
+    data_bytes_out: u64,
+    data_segs_out: u64,
+    data_bytes_in: u64,
+    data_segs_in: u64,
+    non_recov_da: u32,
+    ul_ack_dups: u32,
+    rto_o: u32,
+    rto_r: u32,
+    rto_s: u32,
+    rto_t: u32,
+}
+
 pub struct AppUsageTracker {
     prev: Mutex<HashMap<ConnKey, (u32, u64, u64)>>,
     pending: Mutex<HashMap<u32, (u64, u64)>>,
@@ -72,10 +90,10 @@ impl AppUsageTracker {
         pending
             .into_iter()
             .filter(|(pid, _)| *pid != 0)
-            .map(|(pid, (up, down))| AppUsageSample {
+            .map(|(pid, (in_bytes, out_bytes))| AppUsageSample {
                 app_name: names.get(&pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
-                upload_bytes: up,
-                download_bytes: down,
+                download_bytes: in_bytes,
+                upload_bytes: out_bytes,
             })
             .filter(|s| s.upload_bytes + s.download_bytes > 0)
             .collect()
@@ -160,8 +178,8 @@ fn tcp_byte_counters(row: &MIB_TCPROW_LH) -> Option<(u64, u64)> {
         );
     }
 
-    let mut rod: TCP_ESTATS_DATA_ROD_v0 = unsafe { mem::zeroed() };
-    let rod_size = mem::size_of::<TCP_ESTATS_DATA_ROD_v0>();
+    let mut rod: TcpEstatsDataRod = unsafe { mem::zeroed() };
+    let rod_size = mem::size_of::<TcpEstatsDataRod>();
     let ret = unsafe {
         GetPerTcpConnectionEStats(
             row,
@@ -180,7 +198,7 @@ fn tcp_byte_counters(row: &MIB_TCPROW_LH) -> Option<(u64, u64)> {
     if ret != 0 {
         return None;
     }
-    Some((rod.DataBytesIn, rod.DataBytesOut))
+    Some((rod.data_bytes_in, rod.data_bytes_out))
 }
 
 fn process_names() -> HashMap<u32, String> {

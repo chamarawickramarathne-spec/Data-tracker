@@ -1,24 +1,20 @@
-1. TITLE
-Data Tracker - Real-Time Network & Data Usage Monitor
+DataTracker - Network Data Usage Monitor
 
-2. SHORT DESCRIPTION
-Data Tracker shows your live download and upload speeds, tracks daily and monthly data usage per app, and alerts you before you hit your data limits - all in a clean Windows app.
+Short description:
+Monitor real-time network speed, track per-app data usage, and set data limits with alerts on Windows.
 
-3. LONG DESCRIPTION
-Data Tracker is a lightweight Windows data usage monitor that keeps you in control of your internet connection. The Live Dashboard shows real-time download, upload and total speeds with a rolling 5-minute speed history chart that stays live the whole time the window is open - focused or not. Daily and monthly history pages break down usage by app and by day, and now include top-5 charts plus a per-app detail panel: click any application in your history to see its hourly or daily usage breakdown and download/upload totals. Set daily and monthly data limits with warning and danger thresholds, and Data Tracker will send you a Windows toast notification and play a sound alert the moment you cross them. Turn on the daily summary and it will notify you at a set time each day with your download, upload and total usage. It runs quietly in the system tray, starts with Windows if you want, and keeps your history for the retention period you choose. Built with Tauri, Data Tracker is fast, low on RAM, and updates itself automatically - the in-app update check uses GitHub's release feed directly, so it never hits API rate limits and needs no extra software. When a new version is ready it downloads, restarts itself and relaunches the new build with no manual steps. It enforces a single running instance, so launching it again simply brings the existing window back to the front.
+Long description:
+DataTracker is a lightweight Windows desktop application that provides real-time network monitoring, per-application data usage tracking, and configurable data limit notifications. It displays live download/upload speeds with a 5-minute speed history chart, breaks down data usage by day and month with app-level detail, and sends toast notifications when usage crosses warning or danger thresholds. Built with Tauri 2, React 19, and Rust for fast, native performance with minimal resource usage.
 
-4. FACEBOOK POST TEXT
-Stop guessing how much internet you use! Data Tracker is a free Windows app that shows your live download and upload speeds, tracks daily and monthly data usage per app, and warns you before you hit your limit. Click any app in your usage history to see exactly when it used your data, check the top 5 data-hungry apps, and get a Windows notification the moment you near your daily or monthly limit - with an optional daily usage summary at a time you choose. Its live speed chart keeps running the whole time the app is open, and when a new version is available it downloads and restarts itself automatically. Lightweight, sits in your system tray, and needs no extra software. Download now and take control of your data.
+Facebook post:
+Stay in control of your data! DataTracker monitors your network in real-time, shows which apps are eating your bandwidth, and alerts you before you hit your data limits. Free, lightweight, and built for Windows. Download now!
 
-5. TAGS
-#DataTracker #DataUsageMonitor #InternetSpeed #BandwidthMonitor #NetworkMonitor #WindowsApp #DataLimit #PerAppUsage #DataAlerts #DailySummary
+Facebook tags:
+data usage monitor, network speed monitor, bandwidth tracker, per-app data usage, internet data limit, Windows network monitor, data usage tracker, network usage alerts, bandwidth monitor app, data usage app
 
-6. IMAGE PROMPTS
-1. A sleek dark-mode Windows dashboard showing three speed cards (Download, Upload, Total) with a glowing blue download arrow and a smooth area chart of network history that stays crisp while unfocused, flat modern UI design, high contrast.
-2. A laptop with a clean network dashboard on screen, surrounded by floating wifi signal icons and upward/downward arrows in blue and green, dark background with soft neon glow, modern tech illustration.
-3. A data usage screen showing a top-5 horizontal bar chart of app names like Chrome, Steam and Netflix, with a per-app hourly breakdown chart open below, minimal flat design, soft gradients, light and dark split screen.
-4. A Windows toast notification card popping out saying "Daily usage summary - Downloaded 2.4 GB · Uploaded 0.6 GB today" next to a progress bar graph hitting a warning threshold, clean UI illustration, soft shadows, modern app-style mockup.
-5. A friendly alert notification with a red progress bar saying "Warning: 95% of your monthly data used" above a column chart of daily usage by app, with a small "Restarting with update" toast in the corner, clean UI illustration, modern app-style mockup.
-
-7. NOTE
-This file is regenerated after every modification with a fresh set of descriptions, tags and prompts.
+AI image prompts:
+1. A sleek Windows desktop dashboard showing real-time network speed gauges with green download and blue upload arcs, dark theme, modern UI with data charts, soft ambient lighting
+2. A stylized top-5 apps bar chart showing horizontal bars in gradient colors against a dark background, with app icons and data amounts, clean minimal design
+3. A friendly notification toast popup on a Windows desktop saying "Daily data limit reached" with a progress bar, warm alert colors, modern flat design
+4. A split-screen showing a live network speed dial on the left and a monthly usage calendar heatmap on the right, dark theme, neon accents
+5. An abstract visualization of network data flow with colorful streams of data particles flowing between a laptop and cloud icons, futuristic style, dark background
