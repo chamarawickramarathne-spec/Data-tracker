@@ -88,6 +88,29 @@ pub async fn start_monitoring(app: AppHandle) {
                     let peak_down = last_download_speed;
                     let mut app_samples = app_usage.flush();
 
+                    if app_samples.is_empty() && adapter_total > 0 {
+                        let pid_counts = app_usage.active_pid_counts();
+                        let total_conns: usize = pid_counts.iter().map(|(_, c)| c).sum();
+                        if !pid_counts.is_empty() && total_conns > 0 {
+                            log::warn!(
+                                "No per-app EStats data; distributing {} among {} processes ({} conns)",
+                                crate::monitor::aggregator::format_bytes(adapter_total),
+                                pid_counts.len(),
+                                total_conns,
+                            );
+                            let live_names = crate::monitor::app_usage::process_names();
+                            for (pid, count) in &pid_counts {
+                                let share = *count as f64 / total_conns as f64;
+                                let total = (adapter_total as f64 * share) as u64;
+                                app_samples.push(crate::monitor::app_usage::AppUsageSample {
+                                    app_name: live_names.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                                    download_bytes: total / 2,
+                                    upload_bytes: total / 2,
+                                });
+                            }
+                        }
+                    }
+
                     session_in = 0;
                     session_out = 0;
 

@@ -2,6 +2,30 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.0.8 - Per-app tracking fix: IPv6 support + proportional fallback + diagnostic logging (v1.0.8)
+
+**Date:** 2026-08-25
+
+### What was fixed
+- **Per-app sections always empty** (Top 5 Apps Today, Usage by Application, Top 5 Apps This Month, Top Apps This Month): The per-app EStats-based tracking only monitored IPv4 TCP connections (`AF_INET`). Most modern Windows traffic uses IPv6 or QUIC/UDP, so the tracker collected zero data for the majority of connections. Additionally, `SetPerTcpConnectionEStats` return values were never checked — if EStats collection failed for a connection, it was silently skipped with no diagnostic output.
+
+### Changes
+- **IPv6 TCP support** (`src-tauri/src/monitor/app_usage.rs`): Added `tcp6_snapshot()` using `GetExtendedTcpTable(AF_INET6)` + `GetPerTcp6ConnectionEStats`/`SetPerTcp6ConnectionEStats`. Converts `MIB_TCP6ROW_OWNER_PID` to `MIB_TCP6ROW` via `mem::transmute` for the IPv6 EStats API. IPv6 connections are now tracked alongside IPv4.
+- **ConnKey enum** (`src-tauri/src/monitor/app_usage.rs`): Replaced the `type ConnKey = (u32, u32, u32, u32, u32)` tuple with a `ConnKey` enum (`V4 { pid, la, lp, ra, rp }` / `V6 { pid, la: [u8;16], lp, ra: [u8;16], rp }`) to support both address families in the connection snapshot HashMap.
+- **Diagnostic logging** (`src-tauri/src/monitor/app_usage.rs`): Added `log::debug!` for connection counts, EStats success/failure counts, pending PID counts, and flush sample totals. Added `log::trace!` for individual `SetPerTcpConnectionEStats` and `GetPerTcpConnectionEStats` failures. Added `log::warn!` for `GetExtendedTcpTable` failures.
+- **`SetPerTcpConnectionEStats` error handling** (`src-tauri/src/monitor/app_usage.rs`): Return value is now checked and logged (previously silently discarded).
+- **Proportional fallback** (`src-tauri/src/monitor/mod.rs:91-112`): If `flush()` returns zero samples but the adapter has traffic, the adapter total bytes are distributed proportionally among all processes with active TCP connections (weighted by connection count). This ensures the per-app sections are never completely empty when there IS network traffic, even if EStats fails for all connections.
+- **`active_pid_counts()` method** (`src-tauri/src/monitor/app_usage.rs`): New public method on `AppUsageTracker` that returns `(pid, connection_count)` pairs from the last snapshot, used by the fallback logic.
+- **`process_names()` made public** (`src-tauri/src/monitor/app_usage.rs`): Exported for the fallback in `monitor/mod.rs`.
+
+### Files / Components
+- `src-tauri/src/monitor/app_usage.rs` — rewrote with IPv6 support, ConnKey enum, logging, public APIs
+- `src-tauri/src/monitor/mod.rs` — added proportional fallback + logging
+
+### Verified
+- `pnpm lint` + `tsc -b` pass (pre-existing warnings only).
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+
 ## Mod 1.0.7 - Chart data bugfixes: upload/download swap + TCP EStats struct fix + adapter cap (v1.0.7)
 
 **Date:** 2026-08-18
