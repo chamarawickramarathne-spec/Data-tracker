@@ -1,55 +1,76 @@
-# Data Tracker - v1.0.6 Plan
+# Data Tracker - Development Plan
 
-## Feature 1 - Network stats detail panel (per-app tracking + detail view)
+## Current Version: 1.0.9
 
-### 1a. Per-app data collection - NEW `src-tauri/src/monitor/app_usage.rs`
-- IP Helper sampling engine: `GetExtendedTcpTable` (owner-PID) + `GetPerTcpConnectionEStats` (TCP_ESTATS_DATA DataBytesIn/Out), aggregated per PID. TCP/IPv4 only (no UDP stats in windows-sys 0.59).
-- PID -> process name via ToolHelp32 snapshot (`CreateToolhelp32Snapshot`, `Process32FirstW`).
-- `AppUsageTracker`: capture() every tick (deltas per connection), flush() every 60s save tick -> writes `app_usage_records` + rolls up `daily_app_usage` / `monthly_app_usage`.
-- Status: DONE
+---
 
-### 1b. Queries + commands
-- `db/queries.rs`: `get_app_hourly_breakdown(app_name, date)`, `get_app_daily_breakdown_month(app_name, year, month)`, `upsert_app_daily_usage`, `upsert_app_monthly_usage`.
-- `commands/usage.rs`: `get_app_hourly_breakdown`, `get_app_daily_breakdown_month`; registered in `lib.rs`.
-- Status: DONE
+## Completed
 
-### 1c. UI
-- NEW `src/components/history/AppDetailPanel.tsx` (inline per-app chart + summary chips).
-- `DailyPage.tsx`: clickable app rows -> detail panel; "Top 5 Apps Today" chart.
-- `MonthlyPage.tsx`: clickable app rows -> detail panel; "Top 5 Apps This Month" chart.
-- Status: DONE
+### Mod 1.0.0 - Initial Release
+- Live Dashboard (real-time speed cards + 5-min chart)
+- History (daily/monthly usage with app breakdown)
+- Network monitoring (Rust: per-adapter + per-app, SQLite)
+- Settings (limits, thresholds, notifications, auto-start, tray, retention)
+- System tray, NSIS installer
+- Stack: Tauri 2 + React 19 + Vite 8 + TypeScript + Tailwind + Zustand + Recharts + rusqlite
 
-## Feature 3 - Limit notifications + daily usage summary
+### Mod 1.0.1 - Git-based self-update
+- `check_for_updates` / `apply_update` via git tags + reqwest
+- Version pill + update button on Live Dashboard
 
-### 3a. Alerts loop - NEW `src-tauri/src/monitor/alerts.rs`
-- 60s task with AppHandle: check daily/monthly usage vs limits (warning/danger/100%), one alert per period via in-memory `AlertState`.
-- Toast via `tauri_plugin_notification::NotificationExt`; sound via `MessageBeep` when `sound_alerts_enabled` (added `Win32_System_Diagnostics_Debug` + `Win32_UI_WindowsAndMessaging`).
-- Daily summary toast when local time >= `daily_summary_time` and today not yet sent.
-- Wired into `start_monitoring`.
-- Status: DONE
+### Mod 1.0.2 - Single-instance enforcement
+- `tauri-plugin-single-instance` prevents duplicate launches
 
-### 3b. Settings plumbing
-- Added `daily_summary_enabled` (default 0), `daily_summary_time` (default "20:00") to db struct/schema/queries, SettingsResponse/update_settings, types/index.ts.
-- Migration: `ALTER TABLE ADD COLUMN`, error ignored if exists.
-- Status: DONE
+### Mod 1.0.3 - Update check via GitHub API (no git required)
+- Switched from `git ls-remote` to GitHub REST API `releases/latest`
+- Download timeout + real error surfacing in UI
 
-### 3c. Settings UI - `SettingsPage.tsx`
-- "Daily usage summary" toggle + time input in Notifications section.
-- Status: DONE
+### Mod 1.0.4 - Rate-limit-free update check
+- Switched to `GET /releases/latest` redirect (no API rate limit)
+- Restored `DataTrackerSetup.exe` site download asset
 
-## Versioning
-- Bump 1.0.5 -> 1.0.6 in `Cargo.toml`, `package.json`, `tauri.conf.json`.
-- Status: DONE
+### Mod 1.0.5 - UI fixes + update auto-restart (no separate tag)
+- Removed hardcoded version in sidebar
+- Speed chart live while window is open (not only focused)
+- Update auto-restarts without user closing app
+- Repo cleanup (unused files removed)
+- **Note**: v1.0.5 tag was never created; changes folded into v1.0.6 commit (`ff14df4`)
 
-## Verification
-- `pnpm lint`, `tsc -b`, `pnpm tauri:build` pass (pre-existing warnings only).
-- `releases/` cleaned: only `data-tracker.exe`, `DataTracker_1.0.6_x64-setup.exe`, `DataTrackerSetup.exe`.
-- `scripts/copy-releases.cjs` now prunes old installers + refreshes site asset automatically.
-- Status: DONE
+### Mod 1.0.6 - Per-app tracking + detail panel + usage notifications
+- New per-app tracking engine (`app_usage.rs`): IP Helper sampling, TCP/IPv4, EStats
+- Per-hour/per-day breakdowns + Top 5 Apps charts
+- Clickable app rows → inline detail panel
+- Alerts loop: limit warnings/danger + daily summary toast
+- Settings: daily_summary_enabled + daily_summary_time
 
-## Docs
-- Update `AGENTS.md` (Mod 1.0.6), regenerate `medial_support.txt`.
-- Status: DONE
+### Mod 1.0.7 - Chart data bugfixes
+- Fixed upload/download label swap
+- Fixed TCP EStats struct size (56 bytes, not 96)
+- Added adapter cap: per-app data can't exceed adapter total
 
-## Release (on user approval - NOT DONE, blocked on user)
-- Commit, tag `v1.0.6`, push, GitHub Release with `data-tracker.exe`, `DataTrackerSetup.exe`, `DataTracker_1.0.6_x64-setup.exe`.
+### Mod 1.0.8 - Per-app tracking fix: IPv6 + fallback + logging
+- IPv6 TCP support via `GetExtendedTcpTable(AF_INET6)` + `GetPerTcp6ConnectionEStats`
+- ConnKey enum to support both address families
+- Proportional fallback when EStats returns zero samples
+- Diagnostic logging (debug/trace/warn) for EStats operations
+- `SetPerTcpConnectionEStats` return values now checked
+
+### Mod 1.0.9 - Fallback fix: EStats-independent PID tracking + visible diagnostics
+- `all_conns` field tracks ALL established TCP connections regardless of EStats success
+- `active_pid_counts()` reads from `all_conns` instead of `self.prev`
+- Proportional fallback now works when EStats fails for all connections
+- Log levels raised: `trace!`→`warn!` for EStats failures, `debug!`→`info!` for summaries
+- `env_logger` configured with `info` filter for visible release diagnostics
+
+---
+
+## Pending
+
+None. All planned features and fixes are complete.
+
+---
+
+## Known Gaps
+
+- **v1.0.5 tag missing**: Changes were committed as part of v1.0.6. No separate tag exists.
+- **Per-app tracking limitations**: TCP only (no UDP/QUIC), sampling-based, short-lived flows undercounted.

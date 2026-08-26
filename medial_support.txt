@@ -4,13 +4,13 @@ Short description:
 Monitor real-time network speed, track per-app data usage, and set data limits with alerts on Windows.
 
 Long description:
-DataTracker is a lightweight Windows desktop application that provides real-time network monitoring, per-application data usage tracking, and configurable data limit notifications. It displays live download/upload speeds with a 5-minute speed history chart, breaks down data usage by day and month with app-level detail, and sends toast notifications when usage crosses warning or danger thresholds. Built with Tauri 2, React 19, and Rust for fast, native performance with minimal resource usage.
+DataTracker is a lightweight Windows desktop application that provides real-time network monitoring, per-application data usage tracking, and configurable data limit notifications. It displays live download/upload speeds with a 5-minute speed history chart, breaks down data usage by day and month with app-level detail (including IPv4 and IPv6 connections), and sends toast notifications when usage crosses warning or danger thresholds. Features a proportional fallback system that attributes network traffic to processes even when Windows EStats data is unavailable. Built with Tauri 2, React 19, and Rust for fast, native performance with minimal resource usage.
 
 Facebook post:
-Stay in control of your data! DataTracker monitors your network in real-time, shows which apps are eating your bandwidth, and alerts you before you hit your data limits. Free, lightweight, and built for Windows. Download now!
+Stay in control of your data! DataTracker monitors your network in real-time, shows which apps are eating your bandwidth, and alerts you before you hit your data limits. Now with improved per-app tracking that works across all connection types. Free, lightweight, and built for Windows. Download now!
 
 Facebook tags:
-data usage monitor, network speed monitor, bandwidth tracker, per-app data usage, internet data limit, Windows network monitor, data usage tracker, network usage alerts, bandwidth monitor app, data usage app
+data usage monitor, network speed monitor, bandwidth tracker, per-app data usage, internet data limit, Windows network monitor, data usage tracker, network usage alerts, bandwidth monitor app, data usage app, IPv6 network tracking, data limit alerts
 
 AI image prompts:
 1. A sleek Windows desktop dashboard showing real-time network speed gauges with green download and blue upload arcs, dark theme, modern UI with data charts, soft ambient lighting

@@ -2,6 +2,28 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.0.9 - Fallback fix: EStats-independent PID tracking + visible diagnostics (v1.0.9)
+
+**Date:** 2026-08-26
+
+### What was fixed
+- **Per-app sections still empty despite v1.0.8**: The proportional fallback added in v1.0.8 was self-defeating. It read PID counts from `self.prev`, which was only populated when EStats succeeded. When EStats failed for all connections (the root cause of empty data), `self.prev` was empty, so the fallback had no PID data and never fired.
+- **Diagnostic logging invisible in release builds**: All v1.0.8 diagnostic messages used `trace!`/`debug!` level, which `env_logger::init()` suppresses in release mode (defaults to `error!`-only). There was no way to diagnose EStats failures in production.
+
+### Changes
+- **`all_conns` field** (`src-tauri/src/monitor/app_usage.rs`): New `Mutex<HashMap<ConnKey, u32>>` on `AppUsageTracker` that tracks ALL established TCP connections (IPv4 + IPv6) regardless of EStats success. Populated from `GetExtendedTcpTable` rows with non-zero PIDs.
+- **`TcpSnapshot` struct** (`src-tauri/src/monitor/app_usage.rs`): `tcp_snapshot()` and `tcp6_snapshot()` now return `TcpSnapshot { estats, all_keys }` — EStats data AND all connection keys in one struct. This avoids scanning the TCP table twice.
+- **`active_pid_counts()` rewritten** (`src-tauri/src/monitor/app_usage.rs`): Now reads from `self.all_conns` (all established connections) instead of `self.prev` (EStats-successful connections only). The fallback in `mod.rs:91-112` now has PID data whenever there are active TCP connections, regardless of EStats status.
+- **Log levels raised** (`src-tauri/src/monitor/app_usage.rs`): `trace!` → `warn!` for `SetPerTcpConnectionEStats`/`GetPerTcpConnectionEStats` failures. `debug!` → `info!` for snapshot summaries, flush results, and capture stats.
+- **`env_logger` filter** (`src-tauri/src/lib.rs`): Changed from bare `env_logger::init()` to `Builder::from_env(Env::default().default_filter_or("info")).init()` so `info!`+ messages are visible in release builds.
+
+### Files / Components
+- `src-tauri/src/monitor/app_usage.rs` — TcpSnapshot struct, all_conns field, active_pid_counts rewrite, log level changes
+- `src-tauri/src/lib.rs` — env_logger filter configuration
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+
 ## Mod 1.0.8 - Per-app tracking fix: IPv6 support + proportional fallback + diagnostic logging (v1.0.8)
 
 **Date:** 2026-08-25

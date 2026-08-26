@@ -10,6 +10,11 @@ use windows_sys::Win32::System::Diagnostics::ToolHelp::*;
 
 const ESTABLISHED: u32 = 5;
 
+struct TcpSnapshot {
+    estats: HashMap<ConnKey, (u32, u64, u64)>,
+    all_keys: HashMap<ConnKey, u32>,
+}
+
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum ConnKey {
     V4 { pid: u32, la: u32, lp: u32, ra: u32, rp: u32 },
@@ -40,6 +45,7 @@ struct TcpEstatsDataRod {
 
 pub struct AppUsageTracker {
     prev: Mutex<HashMap<ConnKey, (u64, u64)>>,
+    all_conns: Mutex<HashMap<ConnKey, u32>>,
     pending: Mutex<HashMap<u32, (u64, u64)>>,
     names: Mutex<HashMap<u32, String>>,
 }
@@ -48,15 +54,21 @@ impl AppUsageTracker {
     pub fn new() -> Self {
         Self {
             prev: Mutex::new(HashMap::new()),
+            all_conns: Mutex::new(HashMap::new()),
             pending: Mutex::new(HashMap::new()),
             names: Mutex::new(HashMap::new()),
         }
     }
 
     pub fn capture(&self) {
-        let mut cur = tcp_snapshot();
-        let cur6 = tcp6_snapshot();
-        cur.extend(cur6);
+        let snap4 = tcp_snapshot();
+        let snap6 = tcp6_snapshot();
+
+        let mut cur = snap4.estats;
+        cur.extend(snap6.estats);
+
+        let mut all_keys = snap4.all_keys;
+        all_keys.extend(snap6.all_keys);
 
         let mut prev = self.prev.lock().unwrap();
         let mut pending = self.pending.lock().unwrap();
@@ -74,7 +86,12 @@ impl AppUsageTracker {
         }
 
         *prev = cur.iter().map(|(k, &(_, bi, bo))| (k.clone(), (bi, bo))).collect();
-        log::debug!("capture: {} connections, {} pending PIDs", cur.len(), pending.len());
+
+        let mut conns = self.all_conns.lock().unwrap();
+        *conns = all_keys;
+
+        log::info!("capture: {} EStats connections, {} all connections, {} pending PIDs",
+            cur.len(), conns.len(), pending.len());
     }
 
     pub fn flush(&self) -> Vec<AppUsageSample> {
@@ -83,7 +100,7 @@ impl AppUsageTracker {
             std::mem::take(&mut *p)
         };
         if pending.is_empty() {
-            log::debug!("flush: no pending per-app data");
+            log::info!("flush: no pending per-app data");
             return Vec::new();
         }
 
@@ -104,7 +121,7 @@ impl AppUsageTracker {
             .filter(|s| s.upload_bytes + s.download_bytes > 0)
             .collect();
 
-        log::debug!(
+        log::info!(
             "flush: {} samples, total {}",
             samples.len(),
             crate::monitor::aggregator::format_bytes(samples.iter().map(|s| s.upload_bytes + s.download_bytes).sum::<u64>())
@@ -113,12 +130,9 @@ impl AppUsageTracker {
     }
 
     pub fn active_pid_counts(&self) -> Vec<(u32, usize)> {
-        let prev = self.prev.lock().unwrap();
+        let conns = self.all_conns.lock().unwrap();
         let mut counts: HashMap<u32, usize> = HashMap::new();
-        for key in prev.keys() {
-            let pid = match key {
-                ConnKey::V4 { pid, .. } | ConnKey::V6 { pid, .. } => *pid,
-            };
+        for &pid in conns.values() {
             if pid != 0 {
                 *counts.entry(pid).or_insert(0) += 1;
             }
@@ -127,16 +141,17 @@ impl AppUsageTracker {
     }
 }
 
-fn tcp_snapshot() -> HashMap<ConnKey, (u32, u64, u64)> {
-    let mut out = HashMap::new();
+fn tcp_snapshot() -> TcpSnapshot {
+    let mut estats = HashMap::new();
+    let mut all_keys = HashMap::new();
 
     let mut size: u32 = 0;
     unsafe {
         GetExtendedTcpTable(std::ptr::null_mut(), &mut size, 0, AF_INET as u32, TCP_TABLE_OWNER_PID_ALL, 0);
     }
     if size == 0 {
-        log::debug!("tcp_snapshot: no IPv4 TCP table");
-        return out;
+        log::info!("tcp_snapshot: no IPv4 TCP table");
+        return TcpSnapshot { estats, all_keys };
     }
 
     let mut buf = vec![0u8; size as usize];
@@ -152,7 +167,7 @@ fn tcp_snapshot() -> HashMap<ConnKey, (u32, u64, u64)> {
     };
     if ret != 0 {
         log::warn!("GetExtendedTcpTable(IPv4) failed: {ret}");
-        return out;
+        return TcpSnapshot { estats, all_keys };
     }
 
     let count = unsafe { (buf.as_ptr() as *const u32).read() } as usize;
@@ -169,6 +184,9 @@ fn tcp_snapshot() -> HashMap<ConnKey, (u32, u64, u64)> {
             continue;
         }
 
+        let key = ConnKey::V4 { pid: row.dwOwningPid, la: row.dwLocalAddr, lp: row.dwLocalPort, ra: row.dwRemoteAddr, rp: row.dwRemotePort };
+        all_keys.insert(key.clone(), row.dwOwningPid);
+
         let tcp_row = MIB_TCPROW_LH {
             Anonymous: MIB_TCPROW_LH_0 { dwState: row.dwState },
             dwLocalAddr: row.dwLocalAddr,
@@ -178,30 +196,29 @@ fn tcp_snapshot() -> HashMap<ConnKey, (u32, u64, u64)> {
         };
 
         if let Some((recv, send)) = tcp_byte_counters(&tcp_row) {
-            out.insert(
-                ConnKey::V4 { pid: row.dwOwningPid, la: row.dwLocalAddr, lp: row.dwLocalPort, ra: row.dwRemoteAddr, rp: row.dwRemotePort },
-                (row.dwOwningPid, recv, send),
-            );
+            estats.insert(key, (row.dwOwningPid, recv, send));
             estats_ok += 1;
         } else {
             estats_skip += 1;
         }
     }
 
-    log::debug!("tcp_snapshot: {count} IPv4 rows, {estats_ok} EStats ok, {estats_skip} EStats skipped");
-    out
+    log::info!("tcp_snapshot: {count} IPv4 rows, {estats_ok} EStats ok, {estats_skip} skipped, {total} total tracked",
+        total = all_keys.len());
+    TcpSnapshot { estats, all_keys }
 }
 
-fn tcp6_snapshot() -> HashMap<ConnKey, (u32, u64, u64)> {
-    let mut out = HashMap::new();
+fn tcp6_snapshot() -> TcpSnapshot {
+    let mut estats = HashMap::new();
+    let mut all_keys = HashMap::new();
 
     let mut size: u32 = 0;
     unsafe {
         GetExtendedTcpTable(std::ptr::null_mut(), &mut size, 0, AF_INET6 as u32, TCP_TABLE_OWNER_PID_ALL, 0);
     }
     if size == 0 {
-        log::debug!("tcp6_snapshot: no IPv6 TCP table");
-        return out;
+        log::info!("tcp6_snapshot: no IPv6 TCP table");
+        return TcpSnapshot { estats, all_keys };
     }
 
     let mut buf = vec![0u8; size as usize];
@@ -217,7 +234,7 @@ fn tcp6_snapshot() -> HashMap<ConnKey, (u32, u64, u64)> {
     };
     if ret != 0 {
         log::warn!("GetExtendedTcpTable(IPv6) failed: {ret}");
-        return out;
+        return TcpSnapshot { estats, all_keys };
     }
 
     let count = unsafe { (buf.as_ptr() as *const u32).read() } as usize;
@@ -234,6 +251,9 @@ fn tcp6_snapshot() -> HashMap<ConnKey, (u32, u64, u64)> {
             continue;
         }
 
+        let key = ConnKey::V6 { pid: row.dwOwningPid, la: row.ucLocalAddr, lp: row.dwLocalPort, ra: row.ucRemoteAddr, rp: row.dwRemotePort };
+        all_keys.insert(key.clone(), row.dwOwningPid);
+
         let tcp6_row = MIB_TCP6ROW {
             State: row.dwState as i32,
             LocalAddr: unsafe { mem::transmute(row.ucLocalAddr) },
@@ -245,18 +265,16 @@ fn tcp6_snapshot() -> HashMap<ConnKey, (u32, u64, u64)> {
         };
 
         if let Some((recv, send)) = tcp6_byte_counters(&tcp6_row) {
-            out.insert(
-                ConnKey::V6 { pid: row.dwOwningPid, la: row.ucLocalAddr, lp: row.dwLocalPort, ra: row.ucRemoteAddr, rp: row.dwRemotePort },
-                (row.dwOwningPid, recv, send),
-            );
+            estats.insert(key, (row.dwOwningPid, recv, send));
             estats_ok += 1;
         } else {
             estats_skip += 1;
         }
     }
 
-    log::debug!("tcp6_snapshot: {count} IPv6 rows, {estats_ok} EStats ok, {estats_skip} EStats skipped");
-    out
+    log::info!("tcp6_snapshot: {count} IPv6 rows, {estats_ok} EStats ok, {estats_skip} skipped, {total} total tracked",
+        total = all_keys.len());
+    TcpSnapshot { estats, all_keys }
 }
 
 fn tcp_byte_counters(row: &MIB_TCPROW_LH) -> Option<(u64, u64)> {
@@ -266,7 +284,7 @@ fn tcp_byte_counters(row: &MIB_TCPROW_LH) -> Option<(u64, u64)> {
         SetPerTcpConnectionEStats(row, TcpConnectionEstatsData, &rw as *const _ as *const u8, 0, rw_size as u32, 0)
     };
     if set_ret != 0 {
-        log::trace!("SetPerTcpConnectionEStats failed: {set_ret}");
+        log::warn!("SetPerTcpConnectionEStats failed: {set_ret}");
     }
 
     let mut rod: TcpEstatsDataRod = unsafe { mem::zeroed() };
@@ -280,7 +298,7 @@ fn tcp_byte_counters(row: &MIB_TCPROW_LH) -> Option<(u64, u64)> {
         )
     };
     if ret != 0 {
-        log::trace!("GetPerTcpConnectionEStats failed: {ret}");
+        log::warn!("GetPerTcpConnectionEStats failed: {ret}");
         return None;
     }
     Some((rod.data_bytes_in, rod.data_bytes_out))
@@ -293,7 +311,7 @@ fn tcp6_byte_counters(row: &MIB_TCP6ROW) -> Option<(u64, u64)> {
         SetPerTcp6ConnectionEStats(row, TcpConnectionEstatsData, &rw as *const _ as *const u8, 0, rw_size as u32, 0)
     };
     if set_ret != 0 {
-        log::trace!("SetPerTcp6ConnectionEStats failed: {set_ret}");
+        log::warn!("SetPerTcp6ConnectionEStats failed: {set_ret}");
     }
 
     let mut rod: TcpEstatsDataRod = unsafe { mem::zeroed() };
@@ -307,7 +325,7 @@ fn tcp6_byte_counters(row: &MIB_TCP6ROW) -> Option<(u64, u64)> {
         )
     };
     if ret != 0 {
-        log::trace!("GetPerTcp6ConnectionEStats failed: {ret}");
+        log::warn!("GetPerTcp6ConnectionEStats failed: {ret}");
         return None;
     }
     Some((rod.data_bytes_in, rod.data_bytes_out))
