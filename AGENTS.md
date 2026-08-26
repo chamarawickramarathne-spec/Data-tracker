@@ -2,6 +2,42 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.1.0 - Usage Forecast + Speed Test + Peak Hours Heatmap (v1.1.0)
+
+**Date:** 2026-08-26
+
+### What was added
+
+#### Feature 1 - Usage Forecast
+- **Dashboard forecast card** (`src/components/dashboard/ForecastCard.tsx`): Shows daily and monthly usage progress bars with estimated time until limit is hit. Only visible when limits are configured.
+- **Backend** (`src-tauri/src/commands/usage.rs`): New `get_usage_forecast` command calculates usage rates from `usage_snapshots` (hourly) and `daily_usage` (daily) tables, projects when limits will be reached based on current usage trajectory.
+- **New queries** (`src-tauri/src/db/queries.rs`): `get_today_usage_rate` (bytes + hours active today) and `get_monthly_usage_rate` (bytes + days active this month).
+
+#### Feature 2 - Speed Test
+- **Speed Test page** (`src/components/speedtest/SpeedTestPage.tsx`): Full-page speed test with animated circular gauges for download, upload, and latency. Uses Cloudflare's speed test endpoints.
+- **Speed Test gauge** (`src/components/speedtest/SpeedTestGauge.tsx`): SVG circular gauge with color-coded thresholds (green < 50 Mbps, yellow 50-200, red > 200).
+- **Backend** (`src-tauri/src/commands/speedtest.rs`): Async `run_speed_test` command: downloads 25MB from Cloudflare, uploads 25MB, pings 5 times for median latency. Emits `speedtest-progress` events for real-time UI updates.
+- **Dependencies**: Added `futures-util` for streaming download, enabled `stream` feature on `reqwest`.
+
+#### Feature 3 - Peak Hours Heatmap
+- **Heatmap component** (`src/components/history/PeakHoursHeatmap.tsx`): 7×24 grid (day-of-week × hour) with color intensity representing data usage. Hover tooltips show exact bytes.
+- **Peak Hours page** (`src/components/history/PeakHoursPage.tsx`): Month/year selector, heatmap grid, peak hour and quietest hour summary cards.
+- **Backend** (`src-tauri/src/commands/usage.rs`): New `get_peak_hours_heatmap` command queries `usage_snapshots` grouped by day-of-week and hour.
+- **New query** (`src-tauri/src/db/queries.rs`): `get_peak_hours_data` returns `Vec<PeakHourCell>` for the 7×24 grid.
+
+### Routing + Navigation
+- New page types: `'speedtest'`, `'peakhours'` added to `Page` type in `types/index.ts`
+- Sidebar updated with Peak Hours (Grid3x3 icon) and Speed Test (Gauge icon) nav items
+- `AppLayout.tsx` updated with new page cases
+
+### Files / Components
+- **New**: `src-tauri/src/commands/speedtest.rs`, `src/components/speedtest/SpeedTestPage.tsx`, `src/components/speedtest/SpeedTestGauge.tsx`, `src/components/dashboard/ForecastCard.tsx`, `src/components/history/PeakHoursHeatmap.tsx`, `src/components/history/PeakHoursPage.tsx`
+- **Modified**: `src-tauri/src/commands/mod.rs`, `src-tauri/src/commands/usage.rs`, `src-tauri/src/db/queries.rs`, `src-tauri/src/lib.rs`, `src-tauri/Cargo.toml`, `src/types/index.ts`, `src/components/layout/Sidebar.tsx`, `src/components/layout/AppLayout.tsx`, `src/components/dashboard/Dashboard.tsx`
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+- `tsc -b` clean (no errors).
+
 ## Mod 1.0.9 - Fallback fix: EStats-independent PID tracking + visible diagnostics (v1.0.9)
 
 **Date:** 2026-08-26

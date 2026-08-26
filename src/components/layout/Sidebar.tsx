@@ -1,11 +1,13 @@
 import { useAppStore } from '@/stores/appStore'
 import type { Page } from '@/types'
-import { Activity, Calendar, CalendarDays, Settings } from 'lucide-react'
+import { Activity, Calendar, CalendarDays, Settings, Gauge, Grid3x3 } from 'lucide-react'
 
 const navItems: Array<{ id: Page; label: string; icon: React.ComponentType<any> }> = [
   { id: 'dashboard', label: 'Dashboard', icon: Activity },
   { id: 'daily', label: 'Daily Usage', icon: Calendar },
   { id: 'monthly', label: 'Monthly Usage', icon: CalendarDays },
+  { id: 'peakhours', label: 'Peak Hours', icon: Grid3x3 },
+  { id: 'speedtest', label: 'Speed Test', icon: Gauge },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 

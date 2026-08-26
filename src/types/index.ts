@@ -71,4 +71,35 @@ export interface ThemeInfo {
   isDark: boolean;
 }
 
-export type Page = 'dashboard' | 'daily' | 'monthly' | 'settings';
+export interface UsageForecast {
+  dailyLimitBytes: number;
+  dailyUsedBytes: number;
+  dailyRatePerHour: number;
+  dailyHoursRemaining: number | null;
+  dailyEstimatedHit: string | null;
+  monthlyLimitBytes: number;
+  monthlyUsedBytes: number;
+  monthlyRatePerDay: number;
+  monthlyDaysRemaining: number | null;
+  monthlyEstimatedHit: string | null;
+}
+
+export interface SpeedTestResult {
+  downloadMbps: number;
+  uploadMbps: number;
+  latencyMs: number;
+  server: string;
+}
+
+export interface SpeedTestProgress {
+  phase: string;
+  progress: number;
+}
+
+export interface PeakHourEntry {
+  dayOfWeek: number;
+  hour: number;
+  totalBytes: number;
+}
+
+export type Page = 'dashboard' | 'daily' | 'monthly' | 'settings' | 'speedtest' | 'peakhours';

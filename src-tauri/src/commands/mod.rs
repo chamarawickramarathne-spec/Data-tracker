@@ -3,3 +3,4 @@ pub mod usage;
 pub mod settings;
 pub mod theme;
 pub mod update;
+pub mod speedtest;

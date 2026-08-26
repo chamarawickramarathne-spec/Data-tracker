@@ -1,20 +1,20 @@
 DataTracker - Network Data Usage Monitor
 
 Short description:
-Monitor real-time network speed, track per-app data usage, and set data limits with alerts on Windows.
+Monitor real-time network speed, track per-app data usage, run speed tests, and set data limits with alerts on Windows.
 
 Long description:
-DataTracker is a lightweight Windows desktop application that provides real-time network monitoring, per-application data usage tracking, and configurable data limit notifications. It displays live download/upload speeds with a 5-minute speed history chart, breaks down data usage by day and month with app-level detail (including IPv4 and IPv6 connections), and sends toast notifications when usage crosses warning or danger thresholds. Features a proportional fallback system that attributes network traffic to processes even when Windows EStats data is unavailable. Built with Tauri 2, React 19, and Rust for fast, native performance with minimal resource usage.
+DataTracker is a lightweight Windows desktop application that provides real-time network monitoring, per-application data usage tracking, built-in speed testing, and configurable data limit notifications. It displays live download/upload speeds with a 5-minute speed history chart, breaks down data usage by day and month with app-level detail (including IPv4 and IPv6 connections), shows usage forecasts predicting when data limits will be hit, provides a peak hours heatmap to visualize usage patterns, and sends toast notifications when usage crosses warning or danger thresholds. Features a built-in speed test powered by Cloudflare to verify ISP speeds, measuring download, upload, and latency. Built with Tauri 2, React 19, and Rust for fast, native performance with minimal resource usage.
 
 Facebook post:
-Stay in control of your data! DataTracker monitors your network in real-time, shows which apps are eating your bandwidth, and alerts you before you hit your data limits. Now with improved per-app tracking that works across all connection types. Free, lightweight, and built for Windows. Download now!
+Stay in control of your data! DataTracker monitors your network in real-time, shows which apps are eating your bandwidth, predicts when you'll hit your data limits, and lets you test your actual ISP speeds — all in one lightweight app. Free, fast, and built for Windows. Download now!
 
 Facebook tags:
-data usage monitor, network speed monitor, bandwidth tracker, per-app data usage, internet data limit, Windows network monitor, data usage tracker, network usage alerts, bandwidth monitor app, data usage app, IPv6 network tracking, data limit alerts
+data usage monitor, network speed monitor, bandwidth tracker, per-app data usage, internet data limit, Windows network monitor, data usage tracker, network usage alerts, bandwidth monitor app, speed test app, data limit alerts, peak hours heatmap
 
 AI image prompts:
 1. A sleek Windows desktop dashboard showing real-time network speed gauges with green download and blue upload arcs, dark theme, modern UI with data charts, soft ambient lighting
 2. A stylized top-5 apps bar chart showing horizontal bars in gradient colors against a dark background, with app icons and data amounts, clean minimal design
-3. A friendly notification toast popup on a Windows desktop saying "Daily data limit reached" with a progress bar, warm alert colors, modern flat design
-4. A split-screen showing a live network speed dial on the left and a monthly usage calendar heatmap on the right, dark theme, neon accents
-5. An abstract visualization of network data flow with colorful streams of data particles flowing between a laptop and cloud icons, futuristic style, dark background
+3. A speed test result screen with three circular gauges showing download, upload, and latency measurements, modern dark UI with progress indicators
+4. A heatmap grid showing data usage intensity across hours of the day and days of the week, with blue color gradients, dark background
+5. A split-screen showing a live network speed dial on the left and a monthly usage forecast with progress bars on the right, dark theme, neon accents

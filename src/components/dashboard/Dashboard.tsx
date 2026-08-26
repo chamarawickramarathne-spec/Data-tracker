@@ -5,6 +5,7 @@ import { useAppStore } from '@/stores/appStore'
 import { formatBytes, formatSpeed } from '@/lib/utils'
 import { ArrowDown, ArrowUp, Activity, Zap, RefreshCw, Download, Check } from 'lucide-react'
 import { SpeedChart } from './SpeedChart'
+import { ForecastCard } from './ForecastCard'
 
 type UpdateStatus =
   | { state: 'idle' }
@@ -125,6 +126,7 @@ export function Dashboard() {
       </div>
 
       {/* Speed Chart */}
+      <ForecastCard />
       <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-primary" />

@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.0.9
+## Current Version: 1.1.0
 
 ---
 
@@ -61,6 +61,12 @@
 - Proportional fallback now works when EStats fails for all connections
 - Log levels raised: `trace!`→`warn!` for EStats failures, `debug!`→`info!` for summaries
 - `env_logger` configured with `info` filter for visible release diagnostics
+
+### Mod 1.1.0 - Usage Forecast + Speed Test + Peak Hours Heatmap
+- **Usage Forecast**: Dashboard card showing estimated time until daily/monthly limits are hit based on current usage rate
+- **Speed Test**: Full page with animated gauges, downloads/uploads 25MB from Cloudflare, measures latency
+- **Peak Hours Heatmap**: 7×24 grid showing data usage by hour and day of week, with peak/quietest hour summaries
+- New pages: Speed Test, Peak Hours (added to sidebar navigation)
 
 ---
 

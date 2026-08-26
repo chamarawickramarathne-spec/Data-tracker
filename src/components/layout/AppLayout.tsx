@@ -10,6 +10,8 @@ import { Dashboard } from '@/components/dashboard/Dashboard'
 import { DailyPage } from '@/components/history/DailyPage'
 import { MonthlyPage } from '@/components/history/MonthlyPage'
 import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SpeedTestPage } from '@/components/speedtest/SpeedTestPage'
+import { PeakHoursPage } from '@/components/history/PeakHoursPage'
 
 export function AppLayout() {
   const { currentPage, setNetworkSpeed, setIsDark, setSettings, addToSpeedHistory, setIsWindowVisible } = useAppStore()
@@ -75,6 +77,10 @@ export function AppLayout() {
         return <MonthlyPage />
       case 'settings':
         return <SettingsPage />
+      case 'speedtest':
+        return <SpeedTestPage />
+      case 'peakhours':
+        return <PeakHoursPage />
       default:
         return <Dashboard />
     }
