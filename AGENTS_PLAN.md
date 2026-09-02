@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.2.2
+## Current Version: 1.2.3
 
 ---
 
@@ -70,6 +70,10 @@
 
 ### Mod 1.1.1 - Forecast progress bar color fix
 - Fixed ForecastCard progress bars using wrong CSS variable names (`hsl(var(--danger))` / `hsl(var(--primary))`) → `var(--color-destructive)` / `var(--color-primary)`
+
+### Mod 1.2.3 - Live Connection Count
+- Active Connections stat in Session Summary card showing current TCP connection count
+- Backend `connection_count()` method on `AppUsageTracker` returns `all_conns.len()`
 
 ### Mod 1.2.2 - Enforce minimizeToTray setting
 - Close button now reads `settings.minimizeToTray` from Zustand store
