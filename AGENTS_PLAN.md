@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.2.3
+## Current Version: 1.2.4
 
 ---
 
@@ -70,6 +70,11 @@
 
 ### Mod 1.1.1 - Forecast progress bar color fix
 - Fixed ForecastCard progress bars using wrong CSS variable names (`hsl(var(--danger))` / `hsl(var(--primary))`) → `var(--color-destructive)` / `var(--color-primary)`
+
+### Mod 1.2.4 - Live App Usage fallback fix
+- Fixed Live App Usage showing no data when EStats fails
+- Added `live_speeds_with_fallback()` method using adapter speed proportional distribution
+- Monitoring loop now uses fallback with adapter total speed on every 3s tick
 
 ### Mod 1.2.3 - Live Connection Count
 - Active Connections stat in Session Summary card showing current TCP connection count
