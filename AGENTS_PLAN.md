@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.1.2
+## Current Version: 1.2.0
 
 ---
 
@@ -70,6 +70,11 @@
 
 ### Mod 1.1.1 - Forecast progress bar color fix
 - Fixed ForecastCard progress bars using wrong CSS variable names (`hsl(var(--danger))` / `hsl(var(--primary))`) → `var(--color-destructive)` / `var(--color-primary)`
+
+### Mod 1.2.0 - Per-App Real-Time View
+- Live App Usage card on Dashboard showing top 10 apps by real-time speed
+- Backend emits `per-app-usage` event every 3 seconds with speed deltas
+- `live_app_speeds()` method compares current vs previous tick without draining pending buffer
 
 ### Mod 1.1.2 - Settings save confirmation
 - Save button now shows green "Saved" with checkmark for 2 seconds after successful save
