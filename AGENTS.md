@@ -2,6 +2,20 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.1.2 - Settings save confirmation (v1.1.2)
+
+**Date:** 2026-09-02
+
+### What was fixed
+- **No feedback after "Save Settings"**: the save button showed "Saving..." while in progress, then reverted to "Save Settings" with no indication the save succeeded. Users had no way to know if their changes were applied.
+- **Fix**: added a `saved` state that shows a green "Saved!" button with a checkmark icon for 2 seconds after a successful save, then automatically reverts to the default "Save Settings" button.
+
+### Files / Components
+- `src/components/settings/SettingsPage.tsx` — added `saved` state, `Check` icon import, conditional button styling/text
+
+### Verified
+- `tsc -b` clean (no errors).
+
 ## Mod 1.1.1 - Forecast progress bar color fix (v1.1.1)
 
 **Date:** 2026-09-02

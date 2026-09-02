@@ -12,6 +12,7 @@ import {
   Shield,
   Save,
   RefreshCw,
+  Check,
 } from 'lucide-react'
 
 interface SettingsData {
@@ -44,6 +45,7 @@ export function SettingsPage() {
   const [minimizeToTray, setMinimizeToTray] = useState(true)
   const [retentionDays, setRetentionDays] = useState(90)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     loadSettings()
@@ -89,6 +91,8 @@ export function SettingsPage() {
         dataRetentionDays: retentionDays,
       })
       await loadSettings()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     } catch (err) {
       console.error('Failed to save settings:', err)
     }
@@ -105,10 +109,14 @@ export function SettingsPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+            saved
+              ? 'bg-green-600 text-white'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+          }`}
         >
-          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? 'Saving...' : 'Save Settings'}
+          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}
         </button>
       </div>
 
