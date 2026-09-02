@@ -143,7 +143,6 @@ impl AppUsageTracker {
     pub fn live_app_speeds(&self) -> Vec<AppSpeedEntry> {
         let pending = self.pending.lock().unwrap();
         let mut prev = self.prev_pending.lock().unwrap();
-        let names = self.names.lock().unwrap();
 
         let mut deltas: HashMap<u32, (u64, u64)> = HashMap::new();
         for (pid, &(cur_in, cur_out)) in pending.iter() {
@@ -156,6 +155,19 @@ impl AppUsageTracker {
         }
 
         *prev = pending.clone();
+
+        if deltas.is_empty() {
+            return Vec::new();
+        }
+
+        let live = process_names();
+        {
+            let mut names = self.names.lock().unwrap();
+            for (pid, name) in &live {
+                names.insert(*pid, name.clone());
+            }
+        }
+        let names = self.names.lock().unwrap();
 
         deltas
             .into_iter()
@@ -185,7 +197,15 @@ impl AppUsageTracker {
             return Vec::new();
         }
 
+        let live = process_names();
+        {
+            let mut names = self.names.lock().unwrap();
+            for (pid, name) in &live {
+                names.insert(*pid, name.clone());
+            }
+        }
         let names = self.names.lock().unwrap();
+
         pid_counts
             .into_iter()
             .filter(|(pid, _)| *pid != 0)

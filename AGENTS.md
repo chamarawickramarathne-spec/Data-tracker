@@ -2,6 +2,20 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.5 - Live App Usage fallback fix (v1.2.5)
+
+**Date:** 2026-09-02
+
+### What was fixed
+- **All apps showed as "Unknown"**: Both `live_app_speeds()` and `live_speeds_with_fallback()` read from `self.names` cache, but it was only populated during `flush()` (every 60 seconds). On every 3s tick the cache was stale/empty, so all process names resolved to "Unknown".
+- **Fix**: Both methods now call `process_names()` to refresh the PID→name cache before resolving names. Names are immediately available on every tick.
+
+### Files / Components
+- `src-tauri/src/monitor/app_usage.rs` — both `live_app_speeds()` and `live_speeds_with_fallback()` now refresh names cache before lookup
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+
 ## Mod 1.2.4 - Live App Usage fallback fix (v1.2.4)
 
 **Date:** 2026-09-02
