@@ -2,6 +2,20 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.1.1 - Forecast progress bar color fix (v1.1.1)
+
+**Date:** 2026-09-02
+
+### What was fixed
+- **Usage Forecast progress bars had no color**: the daily and monthly progress bars in `ForecastCard.tsx` used `hsl(var(--danger))` and `hsl(var(--primary))` as inline `backgroundColor`, but the CSS theme defines `--color-primary` and `--color-destructive` as hex values (not HSL components). The variable names and function wrapper were both wrong, so the bars rendered with no visible fill color.
+- **Fix**: replaced `hsl(var(--danger))` → `var(--color-destructive)` and `hsl(var(--primary))` → `var(--color-primary)` in both daily and monthly progress bars.
+
+### Files / Components
+- `src/components/dashboard/ForecastCard.tsx` — progress bar inline style fix
+
+### Verified
+- `tsc -b` clean (no errors).
+
 ## Mod 1.1.0 - Usage Forecast + Speed Test + Peak Hours Heatmap (v1.1.0)
 
 **Date:** 2026-08-26

@@ -41,8 +41,8 @@ export function ForecastCard() {
                 style={{
                   width: `${Math.min((forecast.dailyUsedBytes / forecast.dailyLimitBytes) * 100, 100)}%`,
                   backgroundColor: forecast.dailyHoursRemaining !== null && forecast.dailyHoursRemaining < 24
-                    ? 'hsl(var(--danger))'
-                    : 'hsl(var(--primary))',
+                    ? 'var(--color-destructive)'
+                    : 'var(--color-primary)',
                 }}
               />
             </div>
@@ -74,8 +74,8 @@ export function ForecastCard() {
                 style={{
                   width: `${Math.min((forecast.monthlyUsedBytes / forecast.monthlyLimitBytes) * 100, 100)}%`,
                   backgroundColor: forecast.monthlyDaysRemaining !== null && forecast.monthlyDaysRemaining < 5
-                    ? 'hsl(var(--danger))'
-                    : 'hsl(var(--primary))',
+                    ? 'var(--color-destructive)'
+                    : 'var(--color-primary)',
                 }}
               />
             </div>
