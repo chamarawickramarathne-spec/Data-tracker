@@ -2,6 +2,17 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.9 - Live App Usage: group by app name (v1.2.9)
+
+**Date:** 2026-09-02
+
+### What was fixed
+- **Live App Usage showed more than 8 entries**: The backend sent one entry per PID, so a single app with multiple connections (e.g. Chrome) appeared as multiple rows.
+- **Fix**: Frontend now merges entries by app name before slicing to top 8.
+
+### Files / Components
+- `src/components/dashboard/LiveAppUsage.tsx` — merge by app name before sort/slice
+
 ## Mod 1.2.8 - Dashboard layout: 60/40 split (v1.2.8)
 
 **Date:** 2026-09-02

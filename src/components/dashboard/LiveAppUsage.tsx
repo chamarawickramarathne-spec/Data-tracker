@@ -9,8 +9,26 @@ export function LiveAppUsage() {
 
   useEffect(() => {
     const unlisten = listen<AppSpeedEntry[]>('per-app-usage', (event) => {
-      const sorted = [...event.payload].sort((a, b) => b.totalSpeed - a.totalSpeed)
-      setApps(sorted.slice(0, 8))
+      const merged = new Map<string, { downloadSpeed: number; uploadSpeed: number; totalSpeed: number }>()
+      for (const entry of event.payload) {
+        const existing = merged.get(entry.appName)
+        if (existing) {
+          existing.downloadSpeed += entry.downloadSpeed
+          existing.uploadSpeed += entry.uploadSpeed
+          existing.totalSpeed += entry.totalSpeed
+        } else {
+          merged.set(entry.appName, {
+            downloadSpeed: entry.downloadSpeed,
+            uploadSpeed: entry.uploadSpeed,
+            totalSpeed: entry.totalSpeed,
+          })
+        }
+      }
+      const sorted = [...merged.entries()]
+        .sort((a, b) => b[1].totalSpeed - a[1].totalSpeed)
+        .slice(0, 8)
+        .map(([appName, speeds]) => ({ appName, ...speeds }))
+      setApps(sorted)
     })
     return () => { unlisten.then((fn) => fn()) }
   }, [])
