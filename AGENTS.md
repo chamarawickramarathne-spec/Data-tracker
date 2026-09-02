@@ -2,6 +2,20 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.2 - Enforce minimizeToTray setting (v1.2.2)
+
+**Date:** 2026-09-02
+
+### What was fixed
+- **Close button always hid to tray regardless of setting**: the `minimizeToTray` setting was saved to the database but never read. The close button always called `appWindow.hide()` with no way for users to actually close the app from the titlebar.
+- **Fix**: `Titlebar.tsx` now reads `settings.minimizeToTray` from the Zustand store. When `false`, the close button calls `appWindow.close()` instead of `appWindow.hide()`. Defaults to tray behavior when setting is `null` (first launch).
+
+### Files / Components
+- `src/components/layout/Titlebar.tsx` — reads `settings.minimizeToTray` from store, conditionally closes or hides
+
+### Verified
+- `tsc -b` clean (no errors).
+
 ## Mod 1.2.1 - Current Session Summary Card (v1.2.1)
 
 **Date:** 2026-09-02

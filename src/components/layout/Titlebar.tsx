@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/appStore'
 import { Minus, Square, X, Wifi } from 'lucide-react'
 
 export function Titlebar() {
-  const { networkSpeed, setIsWindowVisible } = useAppStore()
+  const { networkSpeed, setIsWindowVisible, settings } = useAppStore()
 
   const appWindow = getCurrentWindow()
 
@@ -18,8 +18,12 @@ export function Titlebar() {
   }
   const close = async () => {
     try {
-      setIsWindowVisible(false)
-      await appWindow.hide()
+      if (settings?.minimizeToTray !== false) {
+        setIsWindowVisible(false)
+        await appWindow.hide()
+      } else {
+        await appWindow.close()
+      }
     } catch {}
   }
 
