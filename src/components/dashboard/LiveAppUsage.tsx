@@ -10,7 +10,7 @@ export function LiveAppUsage() {
   useEffect(() => {
     const unlisten = listen<AppSpeedEntry[]>('per-app-usage', (event) => {
       const sorted = [...event.payload].sort((a, b) => b.totalSpeed - a.totalSpeed)
-      setApps(sorted.slice(0, 10))
+      setApps(sorted.slice(0, 8))
     })
     return () => { unlisten.then((fn) => fn()) }
   }, [])
@@ -20,7 +20,7 @@ export function LiveAppUsage() {
       <div className="flex items-center gap-2 mb-3">
         <Cpu className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold text-card-foreground">Live App Usage</h3>
-        <span className="text-xs text-muted-foreground ml-auto">Top 10 by speed</span>
+        <span className="text-xs text-muted-foreground ml-auto">Top 8 by speed</span>
       </div>
       {apps.length === 0 ? (
         <p className="text-xs text-muted-foreground py-4 text-center">No active app traffic detected</p>

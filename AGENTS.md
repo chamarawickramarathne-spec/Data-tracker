@@ -2,6 +2,18 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.7 - Live App Usage top 8 + 75/25 dashboard split (v1.2.7)
+
+**Date:** 2026-09-02
+
+### What was changed
+- **Live App Usage** now shows top 8 apps (was 10).
+- **Dashboard layout**: Speed History and Live App Usage now use a 75/25 split (`grid-cols-[3fr_1fr]`) giving Speed History more space.
+
+### Files / Components
+- `src/components/dashboard/Dashboard.tsx` — grid layout changed to `lg:grid-cols-[3fr_1fr]`
+- `src/components/dashboard/LiveAppUsage.tsx` — top 8 slice, label updated
+
 ## Mod 1.2.6 - Dashboard layout: Live App Usage beside Speed History (v1.2.6)
 
 **Date:** 2026-09-02
