@@ -16,7 +16,7 @@ export function LiveAppUsage() {
   }, [])
 
   return (
-    <div className="bg-card rounded-xl border border-border p-5">
+    <div className="bg-card rounded-xl border border-border p-6 h-full">
       <div className="flex items-center gap-2 mb-3">
         <Cpu className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold text-card-foreground">Live App Usage</h3>

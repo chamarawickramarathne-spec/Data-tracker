@@ -2,6 +2,17 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.6 - Dashboard layout: Live App Usage beside Speed History (v1.2.6)
+
+**Date:** 2026-09-02
+
+### What was changed
+- **Live App Usage** moved from below Speed History to beside it in a 2-column grid (`lg:grid-cols-2`). Both cards now match height, no scrollbars.
+
+### Files / Components
+- `src/components/dashboard/Dashboard.tsx` — Speed History + Live App Usage in 2-col grid
+- `src/components/dashboard/LiveAppUsage.tsx` — `h-full` added, padding matches Speed History
+
 ## Mod 1.2.5 - Live App Usage fallback fix (v1.2.5)
 
 **Date:** 2026-09-02

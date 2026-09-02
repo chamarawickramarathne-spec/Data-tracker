@@ -127,19 +127,19 @@ export function Dashboard() {
         />
       </div>
 
-      {/* Speed Chart */}
+      {/* Speed Chart + Live App Usage */}
       <ForecastCard />
-      <div className="bg-card rounded-xl border border-border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-4 h-4 text-primary" />
-          <h2 className="text-lg font-semibold text-card-foreground">Speed History</h2>
-          <span className="text-xs text-muted-foreground ml-auto">Last 5 minutes</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl border border-border p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-4 h-4 text-primary" />
+            <h2 className="text-lg font-semibold text-card-foreground">Speed History</h2>
+            <span className="text-xs text-muted-foreground ml-auto">Last 5 minutes</span>
+          </div>
+          <SpeedChart />
         </div>
-        <SpeedChart />
+        <LiveAppUsage />
       </div>
-
-      {/* Live App Usage */}
-      <LiveAppUsage />
 
       {/* Session Summary */}
       <SessionSummary />
