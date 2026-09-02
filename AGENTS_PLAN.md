@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.1.0
+## Current Version: 1.1.2
 
 ---
 
@@ -65,8 +65,14 @@
 ### Mod 1.1.0 - Usage Forecast + Speed Test + Peak Hours Heatmap
 - **Usage Forecast**: Dashboard card showing estimated time until daily/monthly limits are hit based on current usage rate
 - **Speed Test**: Full page with animated gauges, downloads/uploads 25MB from Cloudflare, measures latency
-- **Peak Hours Heatmap**: 7×24 grid showing data usage by hour and day of week, with peak/quietest hour summaries
+- **Peak Hours Heatmap**: 7x24 grid showing data usage by hour and day of week, with peak/quietest hour summaries
 - New pages: Speed Test, Peak Hours (added to sidebar navigation)
+
+### Mod 1.1.1 - Forecast progress bar color fix
+- Fixed ForecastCard progress bars using wrong CSS variable names (`hsl(var(--danger))` / `hsl(var(--primary))`) → `var(--color-destructive)` / `var(--color-primary)`
+
+### Mod 1.1.2 - Settings save confirmation
+- Save button now shows green "Saved" with checkmark for 2 seconds after successful save
 
 ---
 
