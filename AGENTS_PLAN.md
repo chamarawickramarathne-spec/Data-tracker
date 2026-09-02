@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.2.8
+## Current Version: 1.2.9
 
 ---
 
@@ -70,6 +70,10 @@
 
 ### Mod 1.1.1 - Forecast progress bar color fix
 - Fixed ForecastCard progress bars using wrong CSS variable names (`hsl(var(--danger))` / `hsl(var(--primary))`) → `var(--color-destructive)` / `var(--color-primary)`
+
+### Mod 1.2.9 - Live App Usage: group by app name
+- Merged PID entries by app name before slicing to top 8
+- Fixed duplicate app rows (e.g. Chrome with multiple connections)
 
 ### Mod 1.2.8 - Dashboard 60/40 split
 - Speed History and Live App Usage use 60/40 split (`grid-cols-[3fr_2fr]`)
