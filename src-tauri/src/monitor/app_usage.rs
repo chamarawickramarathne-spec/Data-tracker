@@ -28,6 +28,15 @@ pub struct AppUsageSample {
     pub download_bytes: u64,
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSpeedEntry {
+    pub app_name: String,
+    pub download_speed: u64,
+    pub upload_speed: u64,
+    pub total_speed: u64,
+}
+
 #[repr(C)]
 #[allow(dead_code)]
 struct TcpEstatsDataRod {
@@ -47,6 +56,7 @@ pub struct AppUsageTracker {
     prev: Mutex<HashMap<ConnKey, (u64, u64)>>,
     all_conns: Mutex<HashMap<ConnKey, u32>>,
     pending: Mutex<HashMap<u32, (u64, u64)>>,
+    prev_pending: Mutex<HashMap<u32, (u64, u64)>>,
     names: Mutex<HashMap<u32, String>>,
 }
 
@@ -56,6 +66,7 @@ impl AppUsageTracker {
             prev: Mutex::new(HashMap::new()),
             all_conns: Mutex::new(HashMap::new()),
             pending: Mutex::new(HashMap::new()),
+            prev_pending: Mutex::new(HashMap::new()),
             names: Mutex::new(HashMap::new()),
         }
     }
@@ -127,6 +138,36 @@ impl AppUsageTracker {
             crate::monitor::aggregator::format_bytes(samples.iter().map(|s| s.upload_bytes + s.download_bytes).sum::<u64>())
         );
         samples
+    }
+
+    pub fn live_app_speeds(&self) -> Vec<AppSpeedEntry> {
+        let pending = self.pending.lock().unwrap();
+        let mut prev = self.prev_pending.lock().unwrap();
+        let names = self.names.lock().unwrap();
+
+        let mut deltas: HashMap<u32, (u64, u64)> = HashMap::new();
+        for (pid, &(cur_in, cur_out)) in pending.iter() {
+            let (prev_in, prev_out) = prev.get(pid).copied().unwrap_or((0, 0));
+            let delta_in = cur_in.saturating_sub(prev_in);
+            let delta_out = cur_out.saturating_sub(prev_out);
+            if delta_in + delta_out > 0 {
+                deltas.insert(*pid, (delta_in, delta_out));
+            }
+        }
+
+        *prev = pending.clone();
+
+        deltas
+            .into_iter()
+            .filter(|(pid, _)| *pid != 0)
+            .map(|(pid, (in_bytes, out_bytes))| AppSpeedEntry {
+                app_name: names.get(&pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                download_speed: in_bytes,
+                upload_speed: out_bytes,
+                total_speed: in_bytes + out_bytes,
+            })
+            .filter(|e| e.total_speed > 0)
+            .collect::<Vec<_>>()
     }
 
     pub fn active_pid_counts(&self) -> Vec<(u32, usize)> {

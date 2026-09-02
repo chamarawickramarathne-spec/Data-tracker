@@ -6,6 +6,7 @@ import { formatBytes, formatSpeed } from '@/lib/utils'
 import { ArrowDown, ArrowUp, Activity, Zap, RefreshCw, Download, Check } from 'lucide-react'
 import { SpeedChart } from './SpeedChart'
 import { ForecastCard } from './ForecastCard'
+import { LiveAppUsage } from './LiveAppUsage'
 
 type UpdateStatus =
   | { state: 'idle' }
@@ -135,6 +136,9 @@ export function Dashboard() {
         </div>
         <SpeedChart />
       </div>
+
+      {/* Live App Usage */}
+      <LiveAppUsage />
 
 
     </div>

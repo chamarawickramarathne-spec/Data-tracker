@@ -2,6 +2,26 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.0 - Per-App Real-Time View (v1.2.0)
+
+**Date:** 2026-09-02
+
+### What was added
+- **Live App Usage card** on the Dashboard (`src/components/dashboard/LiveAppUsage.tsx`): Shows top 10 apps by real-time speed, with download and upload speeds per app. Updates every 3 seconds. Listens to the new `per-app-usage` Tauri event.
+- **Backend `live_app_speeds()` method** (`src-tauri/src/monitor/app_usage.rs`): Calculates per-app speed deltas by comparing current pending data against previous tick. Returns `Vec<AppSpeedEntry>` without draining the pending buffer (unlike `flush()`).
+- **`per-app-usage` event** (`src-tauri/src/monitor/mod.rs`): Emitted on every 3-second tick after `capture()`, carrying real-time per-app speed data to the frontend.
+
+### Files / Components
+- **New**: `src/components/dashboard/LiveAppUsage.tsx`
+- **Modified**: `src-tauri/src/monitor/app_usage.rs` — `AppSpeedEntry` struct, `prev_pending` field, `live_app_speeds()` method
+- **Modified**: `src-tauri/src/monitor/mod.rs` — emit `per-app-usage` event
+- **Modified**: `src/types/index.ts` — `AppSpeedEntry` interface
+- **Modified**: `src/components/dashboard/Dashboard.tsx` — import and render `LiveAppUsage`
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+- `tsc -b` clean (no errors).
+
 ## Mod 1.1.2 - Settings save confirmation (v1.1.2)
 
 **Date:** 2026-09-02

@@ -103,3 +103,10 @@ export interface PeakHourEntry {
 }
 
 export type Page = 'dashboard' | 'daily' | 'monthly' | 'settings' | 'speedtest' | 'peakhours';
+
+export interface AppSpeedEntry {
+  appName: string;
+  downloadSpeed: number;
+  uploadSpeed: number;
+  totalSpeed: number;
+}

@@ -36,6 +36,10 @@ pub async fn start_monitoring(app: AppHandle) {
             tokio::select! {
                 _ = tick_interval.tick() => {
                     app_usage.capture();
+
+                    let live_speeds = app_usage.live_app_speeds();
+                    let _ = monitor_handle.emit("per-app-usage", &live_speeds);
+
                     if let Ok(stats) = adapter::get_adapter_stats() {
                         let current_in = stats.bytes_received;
                         let current_out = stats.bytes_sent;
