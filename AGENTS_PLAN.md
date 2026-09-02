@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.2.0
+## Current Version: 1.2.1
 
 ---
 
@@ -70,6 +70,10 @@
 
 ### Mod 1.1.1 - Forecast progress bar color fix
 - Fixed ForecastCard progress bars using wrong CSS variable names (`hsl(var(--danger))` / `hsl(var(--primary))`) → `var(--color-destructive)` / `var(--color-primary)`
+
+### Mod 1.2.1 - Current Session Summary Card
+- Session Summary card on Dashboard showing uptime, total data, peak speeds, avg speeds
+- Backend emits `session-stats` event every 3 seconds with cumulative session data
 
 ### Mod 1.2.0 - Per-App Real-Time View
 - Live App Usage card on Dashboard showing top 10 apps by real-time speed
