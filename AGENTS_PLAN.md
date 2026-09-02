@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.2.1
+## Current Version: 1.2.2
 
 ---
 
@@ -70,6 +70,10 @@
 
 ### Mod 1.1.1 - Forecast progress bar color fix
 - Fixed ForecastCard progress bars using wrong CSS variable names (`hsl(var(--danger))` / `hsl(var(--primary))`) → `var(--color-destructive)` / `var(--color-primary)`
+
+### Mod 1.2.2 - Enforce minimizeToTray setting
+- Close button now reads `settings.minimizeToTray` from Zustand store
+- When false, clicking X actually closes the app instead of hiding to tray
 
 ### Mod 1.2.1 - Current Session Summary Card
 - Session Summary card on Dashboard showing uptime, total data, peak speeds, avg speeds
