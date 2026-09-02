@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { formatBytes, formatSpeed } from '@/lib/utils'
-import { Clock, ArrowDown, ArrowUp, TrendingUp, BarChart3 } from 'lucide-react'
+import { Clock, ArrowDown, ArrowUp, TrendingUp, BarChart3, Wifi } from 'lucide-react'
 import type { SessionStats } from '@/types'
 
 function formatUptime(secs: number): string {
@@ -57,9 +57,16 @@ export function SessionSummary() {
           color="text-chart-upload"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-border">
+      <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-border">
         <AvgItem label="Avg Download" value={formatSpeed(stats.avgDownloadSpeed)} />
         <AvgItem label="Avg Upload" value={formatSpeed(stats.avgUploadSpeed)} />
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Wifi className="w-3 h-3" />
+            Connections
+          </span>
+          <span className="text-xs font-medium text-card-foreground">{stats.activeConnections}</span>
+        </div>
       </div>
     </div>
   )

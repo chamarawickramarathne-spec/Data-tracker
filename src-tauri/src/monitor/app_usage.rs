@@ -180,6 +180,10 @@ impl AppUsageTracker {
         }
         counts.into_iter().collect()
     }
+
+    pub fn connection_count(&self) -> usize {
+        self.all_conns.lock().unwrap().len()
+    }
 }
 
 fn tcp_snapshot() -> TcpSnapshot {

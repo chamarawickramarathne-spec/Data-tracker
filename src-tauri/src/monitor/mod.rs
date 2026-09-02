@@ -100,6 +100,7 @@ pub async fn start_monitoring(app: AppHandle) {
                             "peakUploadSpeed": session_peak_up,
                             "avgDownloadSpeed": avg_download,
                             "avgUploadSpeed": avg_upload,
+                            "activeConnections": app_usage.connection_count(),
                         }));
                     }
                 }

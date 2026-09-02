@@ -119,4 +119,5 @@ export interface SessionStats {
   peakUploadSpeed: number;
   avgDownloadSpeed: number;
   avgUploadSpeed: number;
+  activeConnections: number;
 }

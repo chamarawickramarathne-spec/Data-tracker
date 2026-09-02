@@ -2,6 +2,25 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.3 - Live Connection Count (v1.2.3)
+
+**Date:** 2026-09-02
+
+### What was added
+- **Active Connections** stat in the Session Summary card: shows the current number of established TCP connections (IPv4 + IPv6), updating every 3 seconds.
+- **Backend** (`src-tauri/src/monitor/app_usage.rs`): new `connection_count()` method on `AppUsageTracker` returns `all_conns.len()`.
+- **`session-stats` event** now includes `activeConnections` field.
+
+### Files / Components
+- `src-tauri/src/monitor/app_usage.rs` — `connection_count()` method
+- `src-tauri/src/monitor/mod.rs` — added `activeConnections` to `session-stats` event
+- `src/types/index.ts` — added `activeConnections` to `SessionStats`
+- `src/components/dashboard/SessionSummary.tsx` — added Connections stat with Wifi icon
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+- `tsc -b` clean (no errors).
+
 ## Mod 1.2.2 - Enforce minimizeToTray setting (v1.2.2)
 
 **Date:** 2026-09-02
