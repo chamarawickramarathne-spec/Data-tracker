@@ -2,6 +2,16 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.8 - Dashboard layout: 60/40 split (v1.2.8)
+
+**Date:** 2026-09-02
+
+### What was changed
+- **Dashboard layout**: Speed History and Live App Usage now use a 60/40 split (`grid-cols-[3fr_2fr]`).
+
+### Files / Components
+- `src/components/dashboard/Dashboard.tsx` — grid layout changed to `lg:grid-cols-[3fr_2fr]`
+
 ## Mod 1.2.7 - Live App Usage top 8 + 75/25 dashboard split (v1.2.7)
 
 **Date:** 2026-09-02

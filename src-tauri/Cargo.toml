@@ -1,6 +1,6 @@
 [package]
 name = "data-tracker"
-version = "1.2.7"
+version = "1.2.8"
 description = "Windows Data Usage Monitor"
 authors = ["DataTracker"]
 edition = "2021"

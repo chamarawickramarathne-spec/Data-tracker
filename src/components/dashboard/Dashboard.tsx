@@ -129,7 +129,7 @@ export function Dashboard() {
 
       {/* Speed Chart + Live App Usage */}
       <ForecastCard />
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center gap-2 mb-4">
             <Zap className="w-4 h-4 text-primary" />
