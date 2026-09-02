@@ -2,6 +2,21 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.4 - Live App Usage fallback fix (v1.2.4)
+
+**Date:** 2026-09-02
+
+### What was fixed
+- **Live App Usage showed no data**: `live_app_speeds()` depended on EStats byte counters in the `pending` buffer. When EStats fails for all connections (common on many Windows configs), the buffer was always empty, so the component always showed "No active app traffic detected".
+- **Fix**: added `live_speeds_with_fallback()` method that falls back to distributing adapter speed proportionally among processes weighted by TCP connection count (same proven logic the 60s save cycle uses). The monitoring loop now calls this method with the adapter's total speed, so per-app data always appears when there IS network traffic.
+
+### Files / Components
+- `src-tauri/src/monitor/app_usage.rs` — new `live_speeds_with_fallback()` method
+- `src-tauri/src/monitor/mod.rs` — moved live speeds emission after adapter stats read, pass fallback total
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+
 ## Mod 1.2.3 - Live Connection Count (v1.2.3)
 
 **Date:** 2026-09-02

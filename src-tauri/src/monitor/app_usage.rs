@@ -170,6 +170,39 @@ impl AppUsageTracker {
             .collect::<Vec<_>>()
     }
 
+    pub fn live_speeds_with_fallback(&self, adapter_total_speed: u64) -> Vec<AppSpeedEntry> {
+        let speeds = self.live_app_speeds();
+        if !speeds.is_empty() {
+            return speeds;
+        }
+        if adapter_total_speed == 0 {
+            return Vec::new();
+        }
+
+        let pid_counts = self.active_pid_counts();
+        let total_conns: usize = pid_counts.iter().map(|(_, c)| c).sum();
+        if pid_counts.is_empty() || total_conns == 0 {
+            return Vec::new();
+        }
+
+        let names = self.names.lock().unwrap();
+        pid_counts
+            .into_iter()
+            .filter(|(pid, _)| *pid != 0)
+            .map(|(pid, count)| {
+                let share = count as f64 / total_conns as f64;
+                let total = (adapter_total_speed as f64 * share) as u64;
+                AppSpeedEntry {
+                    app_name: names.get(&pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                    download_speed: total / 2,
+                    upload_speed: total / 2,
+                    total_speed: total,
+                }
+            })
+            .filter(|e| e.total_speed > 0)
+            .collect()
+    }
+
     pub fn active_pid_counts(&self) -> Vec<(u32, usize)> {
         let conns = self.all_conns.lock().unwrap();
         let mut counts: HashMap<u32, usize> = HashMap::new();

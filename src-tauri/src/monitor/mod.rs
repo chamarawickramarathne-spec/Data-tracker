@@ -43,9 +43,6 @@ pub async fn start_monitoring(app: AppHandle) {
                 _ = tick_interval.tick() => {
                     app_usage.capture();
 
-                    let live_speeds = app_usage.live_app_speeds();
-                    let _ = monitor_handle.emit("per-app-usage", &live_speeds);
-
                     if let Ok(stats) = adapter::get_adapter_stats() {
                         let current_in = stats.bytes_received;
                         let current_out = stats.bytes_sent;
@@ -82,6 +79,10 @@ pub async fn start_monitoring(app: AppHandle) {
                             "totalUpload": total_out,
                             "adapterName": last_adapter_name,
                         }));
+
+                        let adapter_total_speed = download_speed + upload_speed;
+                        let live_speeds = app_usage.live_speeds_with_fallback(adapter_total_speed);
+                        let _ = monitor_handle.emit("per-app-usage", &live_speeds);
 
                         session_cumulative_in += download_speed;
                         session_cumulative_out += upload_speed;
