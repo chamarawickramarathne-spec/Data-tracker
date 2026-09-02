@@ -1,6 +1,6 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.2.4
+## Current Version: 1.2.5
 
 ---
 
@@ -70,6 +70,11 @@
 
 ### Mod 1.1.1 - Forecast progress bar color fix
 - Fixed ForecastCard progress bars using wrong CSS variable names (`hsl(var(--danger))` / `hsl(var(--primary))`) → `var(--color-destructive)` / `var(--color-primary)`
+
+### Mod 1.2.5 - Live App Usage names fix
+- Fixed all apps showing as "Unknown" in Live App Usage
+- Both `live_app_speeds()` and `live_speeds_with_fallback()` now call `process_names()` to refresh PID→name cache before lookup
+- Names are immediately available on every 3s tick
 
 ### Mod 1.2.4 - Live App Usage fallback fix
 - Fixed Live App Usage showing no data when EStats fails
