@@ -2,6 +2,24 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.2.1 - Current Session Summary Card (v1.2.1)
+
+**Date:** 2026-09-02
+
+### What was added
+- **Session Summary card** on the Dashboard (`src/components/dashboard/SessionSummary.tsx`): Shows session uptime, total data transferred, peak download/upload speeds, and average download/upload speeds. Updates every 3 seconds.
+- **Backend session tracking** (`src-tauri/src/monitor/mod.rs`): Cumulative session counters (never reset) for total bytes and peak speeds, plus uptime via `Instant::now()`. Emits `session-stats` Tauri event on every tick.
+
+### Files / Components
+- **New**: `src/components/dashboard/SessionSummary.tsx`
+- **Modified**: `src-tauri/src/monitor/mod.rs` — session cumulative tracking + `session-stats` event
+- **Modified**: `src/types/index.ts` — `SessionStats` interface
+- **Modified**: `src/components/dashboard/Dashboard.tsx` — import and render `SessionSummary`
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+- `tsc -b` clean (no errors).
+
 ## Mod 1.2.0 - Per-App Real-Time View (v1.2.0)
 
 **Date:** 2026-09-02

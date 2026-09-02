@@ -32,6 +32,12 @@ pub async fn start_monitoring(app: AppHandle) {
         let mut last_upload_speed: u64 = 0;
         let app_usage = crate::monitor::app_usage::AppUsageTracker::new();
 
+        let session_start = std::time::Instant::now();
+        let mut session_cumulative_in: u64 = 0;
+        let mut session_cumulative_out: u64 = 0;
+        let mut session_peak_down: u64 = 0;
+        let mut session_peak_up: u64 = 0;
+
         loop {
             tokio::select! {
                 _ = tick_interval.tick() => {
@@ -75,6 +81,25 @@ pub async fn start_monitoring(app: AppHandle) {
                             "totalDownload": total_in,
                             "totalUpload": total_out,
                             "adapterName": last_adapter_name,
+                        }));
+
+                        session_cumulative_in += download_speed;
+                        session_cumulative_out += upload_speed;
+                        if download_speed > session_peak_down { session_peak_down = download_speed; }
+                        if upload_speed > session_peak_up { session_peak_up = upload_speed; }
+
+                        let elapsed_secs = session_start.elapsed().as_secs();
+                        let avg_download = if elapsed_secs > 0 { session_cumulative_in / elapsed_secs } else { 0 };
+                        let avg_upload = if elapsed_secs > 0 { session_cumulative_out / elapsed_secs } else { 0 };
+
+                        let _ = monitor_handle.emit("session-stats", serde_json::json!({
+                            "uptimeSeconds": elapsed_secs,
+                            "totalDownload": session_cumulative_in,
+                            "totalUpload": session_cumulative_out,
+                            "peakDownloadSpeed": session_peak_down,
+                            "peakUploadSpeed": session_peak_up,
+                            "avgDownloadSpeed": avg_download,
+                            "avgUploadSpeed": avg_upload,
                         }));
                     }
                 }

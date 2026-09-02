@@ -7,6 +7,7 @@ import { ArrowDown, ArrowUp, Activity, Zap, RefreshCw, Download, Check } from 'l
 import { SpeedChart } from './SpeedChart'
 import { ForecastCard } from './ForecastCard'
 import { LiveAppUsage } from './LiveAppUsage'
+import { SessionSummary } from './SessionSummary'
 
 type UpdateStatus =
   | { state: 'idle' }
@@ -139,6 +140,9 @@ export function Dashboard() {
 
       {/* Live App Usage */}
       <LiveAppUsage />
+
+      {/* Session Summary */}
+      <SessionSummary />
 
 
     </div>

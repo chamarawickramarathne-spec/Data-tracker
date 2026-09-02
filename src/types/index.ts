@@ -110,3 +110,13 @@ export interface AppSpeedEntry {
   uploadSpeed: number;
   totalSpeed: number;
 }
+
+export interface SessionStats {
+  uptimeSeconds: number;
+  totalDownload: number;
+  totalUpload: number;
+  peakDownloadSpeed: number;
+  peakUploadSpeed: number;
+  avgDownloadSpeed: number;
+  avgUploadSpeed: number;
+}
