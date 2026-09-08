@@ -6,7 +6,7 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -40,12 +40,24 @@ pub fn run() {
                 use tauri_plugin_autostart::ManagerExt;
                 if let Ok(settings) = crate::db::queries::get_settings(&db) {
                     let autolaunch = app.autolaunch();
-                    if settings.auto_start_enabled {
-                        let _ = autolaunch.enable();
+                    let result = if settings.auto_start_enabled {
+                        autolaunch.enable()
                     } else {
-                        let _ = autolaunch.disable();
+                        autolaunch.disable()
+                    };
+                    if let Err(e) = result {
+                        log::warn!("Failed to sync autostart setting: {e}");
                     }
                 }
+            }
+
+            // Enforce data retention on startup (honors user's retention setting)
+            match crate::db::queries::get_settings(&db) {
+                Ok(settings) => match crate::db::queries::purge_old_usage(&db, settings.data_retention_days) {
+                    Ok(deleted) => log::info!("Data retention cleanup removed {deleted} old rows"),
+                    Err(e) => log::warn!("Data retention cleanup failed: {e}"),
+                },
+                Err(e) => log::warn!("Failed to read settings for retention cleanup: {e}"),
             }
 
             app.manage(db::DbState(std::sync::Mutex::new(db)));

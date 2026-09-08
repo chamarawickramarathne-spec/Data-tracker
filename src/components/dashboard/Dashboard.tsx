@@ -34,7 +34,7 @@ export function Dashboard() {
       setVersion(info.current)
       if (info.latest) {
         setUpdate({ state: 'downloading', version: info.latest })
-        await invoke('apply_update', { repo: 'chamarawickramarathne-spec/Data-tracker', version: info.latest })
+        await invoke('apply_update', { version: info.latest })
         setUpdate({ state: 'restarting' })
       } else {
         setUpdate({ state: 'uptodate' })

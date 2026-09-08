@@ -170,27 +170,49 @@ pub async fn start_monitoring(app: AppHandle) {
                         let year: i32 = now.format("%Y").to_string().parse().unwrap_or(2026);
                         let month: u32 = now.format("%m").to_string().parse().unwrap_or(1);
 
-                        let _ = crate::db::queries::insert_snapshot(
+                        let mut failures: Vec<String> = Vec::new();
+
+                        if let Err(e) = crate::db::queries::insert_snapshot(
                             &conn, &timestamp, &adapter, up, down, peak_up, peak_down,
-                        );
+                        ) {
+                            failures.push(format!("snapshot: {e}"));
+                        }
 
-                        let _ = crate::db::queries::upsert_daily_usage(
+                        if let Err(e) = crate::db::queries::upsert_daily_usage(
                             &conn, &date, &adapter, up, down, peak_up, peak_down,
-                        );
+                        ) {
+                            failures.push(format!("daily: {e}"));
+                        }
 
-                        let _ = crate::db::queries::upsert_monthly_usage(
+                        if let Err(e) = crate::db::queries::upsert_monthly_usage(
                             &conn, year, month, &adapter, up, down, peak_up, peak_down,
-                        );
+                        ) {
+                            failures.push(format!("monthly: {e}"));
+                        }
 
                         for sample in app_samples {
-                            let _ = crate::db::queries::insert_app_usage(
+                            if let Err(e) = crate::db::queries::insert_app_usage(
                                 &conn, &timestamp, &sample.app_name, "", sample.upload_bytes, sample.download_bytes,
-                            );
-                            let _ = crate::db::queries::upsert_app_daily_usage(
+                            ) {
+                                failures.push(format!("app record {}: {e}", sample.app_name));
+                            }
+                            if let Err(e) = crate::db::queries::upsert_app_daily_usage(
                                 &conn, &date, &sample.app_name, sample.upload_bytes, sample.download_bytes,
-                            );
-                            let _ = crate::db::queries::upsert_app_monthly_usage(
+                            ) {
+                                failures.push(format!("app daily {}: {e}", sample.app_name));
+                            }
+                            if let Err(e) = crate::db::queries::upsert_app_monthly_usage(
                                 &conn, year, month, &sample.app_name, sample.upload_bytes, sample.download_bytes,
+                            ) {
+                                failures.push(format!("app monthly {}: {e}", sample.app_name));
+                            }
+                        }
+
+                        if !failures.is_empty() {
+                            log::warn!(
+                                "{} DB write failure(s) this save cycle: {}",
+                                failures.len(),
+                                failures.join("; ")
                             );
                         }
                     });

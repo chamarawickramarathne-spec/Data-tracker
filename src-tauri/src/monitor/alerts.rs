@@ -42,11 +42,29 @@ impl AlertState {
 
 pub async fn run(app: AppHandle) {
     let state = Mutex::new(AlertState::new());
+    let mut last_purge_day = String::new();
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
     loop {
         interval.tick().await;
         check_limits(&app, &state);
         check_daily_summary(&app, &state);
+        enforce_retention(&app, &mut last_purge_day);
+    }
+}
+
+fn enforce_retention(app: &AppHandle, last_purge_day: &mut String) {
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    if *last_purge_day == today {
+        return;
+    }
+    *last_purge_day = today;
+
+    let Some(db) = app.try_state::<crate::db::DbState>() else { return };
+    let Ok(conn) = db.0.lock() else { return };
+    let Ok(settings) = crate::db::queries::get_settings(&conn) else { return };
+    match crate::db::queries::purge_old_usage(&conn, settings.data_retention_days) {
+        Ok(deleted) => log::info!("Scheduled data retention cleanup removed {deleted} old rows"),
+        Err(e) => log::warn!("Scheduled data retention cleanup failed: {e}"),
     }
 }
 

@@ -2,6 +2,67 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.3.0 - Security audit remediation (v1.3.0)
+
+**Date:** 2026-09-08
+
+### What was fixed
+
+#### CRITICAL - Signed/checksum-verified auto-update (C1)
+- **Unsigned, unverified update download**: `apply_update` previously downloaded `data-tracker.exe` from GitHub over HTTPS with NO signature or checksum verification, then executed a `cmd` script that swapped the running exe. Any compromise of the repo/TLS could ship arbitrary code.
+- **Fix** (`src-tauri/src/commands/update.rs`):
+  - Downloaded bytes now verified against a **SHA-256 checksum** published in the GitHub release body (line `SHA256: <hex>`).
+  - Staged exe must pass **Windows Authenticode signature verification** via `WinVerifyTrust` (`WINTRUST_ACTION_GENERIC_VERIFY_V2`, `WTD_UI_NONE`, `WTD_REVOCATION_CHECK_NONE`, `WTD_SAFER_FLAG`) before the swap script is written.
+  - `repo` is now **pinned server-side** to `UPDATE_REPO` (the `apply_update` command no longer accepts a frontend-supplied `repo`; only `version`), and `version` is validated (`verify_version_format`) to reject path traversal (`/`, `\`, `..`) and malformed semver.
+- New deps: `sha2` (direct), `windows-sys` features `Win32_Security_WinTrust` + `Win32_Security_Cryptography`, `chrono::Datelike` import in `queries.rs`.
+- Frontend `Dashboard.tsx` `invoke('apply_update', ...)` updated to pass only `version`.
+
+#### CRITICAL - CSP disabled (C2)
+- **`"csp": null`** removed; replaced with a strict CSP in `src-tauri/tauri.conf.json`: `default-src 'self'; connect-src 'self' https://github.com https://speed.cloudflare.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:`.
+
+#### HIGH - Unbounded DB growth / inert retention (H1)
+- `data_retention_days` was saved but never enforced; `usage_snapshots` (every 60s) + `app_usage_records` (per-app every 60s) grew without bound.
+- **Fix**:
+  - New `purge_old_usage(conn, retention_days)` in `db/queries.rs` deletes snapped/app records older than the window and rolled-up daily/monthly rows whose period predates the window.
+  - Called at startup in `lib.rs` setup, and once per day from the `monitor/alerts.rs` loop (`enforce_retention`).
+
+#### HIGH - PII logging + high-frequency info logs (H2)
+- Default `env_logger` filter was `info`, logging process names and per-3s connection counts.
+- **Fix**: default filter lowered to `warn`; per-tick connection/capture/`tcp_snapshot`/`tcp6_snapshot` logs demoted to `debug!`.
+
+#### HIGH - Silently swallowed runtime errors (H3)
+- DB writes in the save cycle used `let _ = ...`, so failures were silent (data loss masked).
+- **Fix** (`monitor/mod.rs`): each insert/upsert result is checked; failures are accumulated and logged via `log::warn!` with count + detail.
+- Autostart sync errors in `lib.rs` setup and `commands/settings.rs` now logged instead of ignored.
+
+#### MEDIUM - Over-broad permissions + version drift (M1/M2)
+- **Capabilities trimmed** (`src-tauri/capabilities/default.json`): removed unused `set-position`/`set-size`/`center`; added only the used window ops (`maximize`/`unmaximize`/`is-maximized`/`is-visible`).
+- **Version drift fixed**: `package.json` bumped 1.1.0 → 1.3.0; `speedtest.rs` user-agent 1.1.0 → 1.3.0 (final release version).
+
+### Files / Components
+- `src-tauri/src/commands/update.rs` — checksum + Authenticode verification, pinned repo, version validation
+- `src-tauri/Cargo.toml` — `sha2`, WinTrust + Cryptography windows-sys features
+- `src-tauri/tauri.conf.json` — enforced CSP
+- `src-tauri/src/db/queries.rs` — `purge_old_usage`; `chrono::Datelike` import
+- `src-tauri/src/lib.rs` — retention purge on startup, `warn` default log filter, autostart error logging
+- `src-tauri/src/monitor/alerts.rs` — `enforce_retention` daily purge
+- `src-tauri/src/monitor/mod.rs` — DB write error aggregation/logging
+- `src-tauri/src/monitor/app_usage.rs` — `debug!` for per-tick logs
+- `src-tauri/src/commands/settings.rs` — autostart error logging
+- `src-tauri/capabilities/default.json` — trimmed window permissions
+- `src/components/dashboard/Dashboard.tsx` — `apply_update` call signature (version only)
+- `package.json` — version 1.3.0
+- `src-tauri/src/commands/speedtest.rs` — user-agent 1.3.0
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new ones).
+- `tsc -b` clean (no errors).
+- `oxlint` clean (only pre-existing warnings).
+
+### Important notes
+- Releases must now include a `SHA256: <64-hex>` line in the release body matching the `data-tracker.exe` binary, otherwise self-update will refuse to apply (this is intentional).
+- The downloaded exe must be Authenticode-signed and trusted on the target machine to pass `WinVerifyTrust`.
+
 ## Mod 1.2.9 - Live App Usage: group by app name (v1.2.9)
 
 **Date:** 2026-09-02

@@ -1,13 +1,20 @@
 use serde::Serialize;
+use sha2::{Digest, Sha256};
+use std::ffi::c_void;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 use std::time::Duration;
+use windows_sys::Win32::Security::WinTrust::*;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
+// The update repository is pinned server-side. The frontend passes a repo only
+// to select the download URL, but verification always targets this constant.
 pub const UPDATE_REPO: &str = "chamarawickramarathne-spec/Data-tracker";
 pub const UPDATE_EXE_NAME: &str = "data-tracker.exe";
+const GENERIC_VERIFY_V2: windows_sys::core::GUID =
+    windows_sys::core::GUID::from_u128(0x00aac56b_cd44_11d0_8cc2_00c04fc295ee);
 
 #[derive(Serialize)]
 pub struct UpdateInfo {
@@ -75,10 +82,9 @@ fn run_check_for_updates() -> Result<UpdateInfo, String> {
 #[tauri::command]
 pub async fn apply_update(
     app: tauri::AppHandle,
-    repo: String,
     version: String,
 ) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || run_apply_update(&repo, &version))
+    tauri::async_runtime::spawn_blocking(move || run_apply_update(&version))
         .await
         .map_err(|e| format!("Update apply failed: {e}"))??;
 
@@ -91,7 +97,10 @@ pub async fn apply_update(
     Ok(())
 }
 
-fn run_apply_update(repo: &str, version: &str) -> Result<(), String> {
+fn run_apply_update(version: &str) -> Result<(), String> {
+    // The repo used for the download is always the pinned constant.
+    verify_version_format(version)?;
+
     let exe = std::env::current_exe().map_err(|e| format!("Failed to locate app: {e}"))?;
     let app_dir = exe.parent().ok_or("Failed to resolve app directory")?.to_path_buf();
     let exe_path = exe.as_path();
@@ -104,7 +113,7 @@ fn run_apply_update(repo: &str, version: &str) -> Result<(), String> {
 
     let url = format!(
         "https://github.com/{}/releases/download/v{}/{}",
-        repo, version, UPDATE_EXE_NAME
+        UPDATE_REPO, version, UPDATE_EXE_NAME
     );
 
     let response = reqwest::blocking::Client::builder()
@@ -121,7 +130,14 @@ fn run_apply_update(repo: &str, version: &str) -> Result<(), String> {
     let bytes = response
         .bytes()
         .map_err(|e| format!("Download failed: {e}"))?;
-    std::fs::write(&staged, bytes).map_err(|e| format!("Failed to stage update: {e}"))?;
+    std::fs::write(&staged, &bytes).map_err(|e| format!("Failed to stage update: {e}"))?;
+
+    // Fetch the expected SHA-256 checksum from the release body and verify it.
+    let expected_sha = fetch_release_checksum(version)?;
+    verify_sha256(&bytes, &expected_sha)?;
+
+    // Verify the Authenticode signature of the downloaded executable.
+    verify_authenticode(&staged)?;
 
     let quoted_exe = format!("\"{}\"", exe_path.display());
     let quoted_staged = format!("\"{}\"", staged.display());
@@ -144,6 +160,135 @@ fn run_apply_update(repo: &str, version: &str) -> Result<(), String> {
         .spawn()
         .map_err(|e| format!("Failed to launch updater: {e}"))?;
     drop(launch);
+
+    Ok(())
+}
+
+fn verify_version_format(version: &str) -> Result<(), String> {
+    if parse_semver(version).is_none() {
+        return Err("Invalid version format refused".to_string());
+    }
+    if version.contains('/') || version.contains('\\') || version.contains("..") {
+        return Err("Version contains invalid characters".to_string());
+    }
+    Ok(())
+}
+
+fn fetch_release_checksum(version: &str) -> Result<String, String> {
+    // Fetch the release body and look for a line like: SHA256: <hex>
+    let url = format!("https://github.com/{}/releases/tag/v{}", UPDATE_REPO, version);
+    let client = reqwest::blocking::Client::builder()
+        .timeout(REQUEST_TIMEOUT)
+        .user_agent("DataTracker-update-check")
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
+    let response = client
+        .get(&url)
+        .send()
+        .map_err(|e| format!("Failed to fetch release checksum: {e}"))?;
+    if !response.status().is_success() {
+        return Err(format!("Failed to fetch release checksum: HTTP {}", response.status()));
+    }
+    let body = response
+        .text()
+        .map_err(|e| format!("Failed to read release body: {e}"))?;
+
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if let Some(hex) = trimmed.strip_prefix("SHA256:") {
+            let hex = hex.trim();
+            if !hex.is_empty() && hex.len() == 64 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Ok(hex.to_ascii_lowercase());
+            }
+        }
+    }
+    Err("Release has no valid SHA256 checksum to verify against".to_string())
+}
+
+fn verify_sha256(data: &[u8], expected_hex: &str) -> Result<(), String> {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    let actual = hasher.finalize();
+    let actual_hex = actual
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
+
+    if actual_hex != expected_hex.to_ascii_lowercase() {
+        return Err("Downloaded update failed SHA-256 verification; update aborted".to_string());
+    }
+    Ok(())
+}
+
+fn verify_authenticode(path: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+
+    let wide: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    let mut file_info = WINTRUST_FILE_INFO {
+        cbStruct: std::mem::size_of::<WINTRUST_FILE_INFO>() as u32,
+        pcwszFilePath: wide.as_ptr(),
+        hFile: std::ptr::null_mut(),
+        pgKnownSubject: std::ptr::null_mut(),
+    };
+
+    let mut data = WINTRUST_DATA {
+        cbStruct: std::mem::size_of::<WINTRUST_DATA>() as u32,
+        pPolicyCallbackData: std::ptr::null_mut(),
+        pSIPClientData: std::ptr::null_mut(),
+        dwUIChoice: WTD_UI_NONE,
+        fdwRevocationChecks: WTD_REVOKE_NONE,
+        dwUnionChoice: WTD_CHOICE_FILE,
+        Anonymous: WINTRUST_DATA_0 { pFile: &mut file_info },
+        dwStateAction: WTD_STATEACTION_VERIFY,
+        hWVTStateData: std::ptr::null_mut(),
+        pwszURLReference: std::ptr::null_mut(),
+        dwProvFlags: WTD_REVOCATION_CHECK_NONE | WTD_SAFER_FLAG,
+        dwUIContext: WTD_UICONTEXT_EXECUTE,
+        pSignatureSettings: std::ptr::null_mut(),
+    };
+
+    let mut action = GENERIC_VERIFY_V2;
+
+    let result = unsafe {
+        WinVerifyTrust(
+            std::ptr::null_mut(),
+            &mut action,
+            &mut data as *mut WINTRUST_DATA as *mut c_void,
+        )
+    };
+
+    if result != 0i32 {
+        if data.hWVTStateData != std::ptr::null_mut() {
+            unsafe {
+                data.dwStateAction = WTD_STATEACTION_CLOSE;
+                WinVerifyTrust(
+                    std::ptr::null_mut(),
+                    &mut action,
+                    &mut data as *mut WINTRUST_DATA as *mut c_void,
+                );
+            }
+        }
+        return Err(format!(
+            "Downloaded update failed Authenticode signature verification (0x{:08X}); update aborted",
+            result as u32
+        ));
+    }
+
+    if data.hWVTStateData != std::ptr::null_mut() {
+        unsafe {
+            data.dwStateAction = WTD_STATEACTION_CLOSE;
+            WinVerifyTrust(
+                std::ptr::null_mut(),
+                &mut action,
+                &mut data as *mut WINTRUST_DATA as *mut c_void,
+            );
+        }
+    }
 
     Ok(())
 }

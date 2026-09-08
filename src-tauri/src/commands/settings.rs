@@ -82,11 +82,14 @@ pub fn update_settings(
 
     if let Some(enabled) = auto_start_enabled {
         let autolaunch = app.autolaunch();
-        let _ = if enabled {
+        let result = if enabled {
             autolaunch.enable()
         } else {
             autolaunch.disable()
         };
+        if let Err(e) = result {
+            log::warn!("Failed to update autostart setting: {e}");
+        }
     }
 
     Ok(SettingsResponse {

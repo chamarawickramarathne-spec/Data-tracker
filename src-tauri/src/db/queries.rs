@@ -1,4 +1,5 @@
 use crate::db::{UserSettings};
+use chrono::Datelike;
 use rusqlite::{Connection, Result, params};
 use serde::{Deserialize, Serialize};
 
@@ -553,4 +554,59 @@ pub fn get_monthly_usage_rate(conn: &Connection, year: i32, month: u32) -> Resul
         },
     )?;
     Ok(row)
+}
+
+/// Purge usage records older than `retention_days`. Returns the number of
+/// rows deleted across all usage tables. Sub-second snapshots are removed
+/// based on their timestamp; rolled-up daily/monthly rows are removed when
+/// their period predates the retention window.
+pub fn purge_old_usage(conn: &Connection, retention_days: i32) -> Result<usize> {
+    if retention_days <= 0 {
+        return Ok(0);
+    }
+
+    let cutoff = chrono::Local::now()
+        .checked_sub_signed(chrono::Duration::days(retention_days as i64))
+        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+        .unwrap_or_else(|| "1970-01-01 00:00:00".to_string());
+    // SQLite string comparison works for ISO-8601-ish timestamps.
+    let day_cutoff = &cutoff[..10];
+    let month_cutoff = chrono::Local::now()
+        .checked_sub_signed(chrono::Duration::days(retention_days as i64))
+        .map(|dt| (dt.year(), dt.month()))
+        .unwrap_or((1970, 1));
+
+    let mut deleted: usize = 0;
+
+    deleted += conn.execute(
+        "DELETE FROM usage_snapshots WHERE timestamp < ?1",
+        params![cutoff],
+    )?;
+
+    deleted += conn.execute(
+        "DELETE FROM app_usage_records WHERE timestamp < ?1",
+        params![cutoff],
+    )?;
+
+    deleted += conn.execute(
+        "DELETE FROM daily_usage WHERE date < ?1",
+        params![day_cutoff],
+    )?;
+
+    deleted += conn.execute(
+        "DELETE FROM daily_app_usage WHERE date < ?1",
+        params![day_cutoff],
+    )?;
+
+    deleted += conn.execute(
+        "DELETE FROM monthly_usage WHERE (year < ?1) OR (year = ?1 AND month < ?2)",
+        params![month_cutoff.0, month_cutoff.1 as i32],
+    )?;
+
+    deleted += conn.execute(
+        "DELETE FROM monthly_app_usage WHERE (year < ?1) OR (year = ?1 AND month < ?2)",
+        params![month_cutoff.0, month_cutoff.1 as i32],
+    )?;
+
+    Ok(deleted)
 }

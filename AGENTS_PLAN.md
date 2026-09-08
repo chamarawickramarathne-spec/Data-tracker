@@ -1,10 +1,18 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.2.9
+## Current Version: 1.3.0
 
 ---
 
 ## Completed
+
+### Mod 1.3.0 - Security audit remediation
+- **C1** Signed/checksum-verified auto-update: SHA-256 checksum + Authenticode (`WinVerifyTrust`) verification of downloaded exe before swap; repo pinned server-side; version validated against path traversal
+- **C2** Enforced strict Content Security Policy (CSP) in `tauri.conf.json`
+- **H1** Data retention now enforced via `purge_old_usage()` on startup + daily `enforce_retention()` in alerts loop
+- **H2** Default log filter lowered to `warn`; per-tick connection/capture logs demoted to `debug!`
+- **H3** DB write / autostart failures are now logged instead of silently swallowed
+- **M1/M2** Trimmed window capabilities + fixed package.json/speedtest user-agent version drift to 1.3.0
 
 ### Mod 1.0.0 - Initial Release
 - Live Dashboard (real-time speed cards + 5-min chart)

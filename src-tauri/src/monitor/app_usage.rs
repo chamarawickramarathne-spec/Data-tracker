@@ -101,7 +101,7 @@ impl AppUsageTracker {
         let mut conns = self.all_conns.lock().unwrap();
         *conns = all_keys;
 
-        log::info!("capture: {} EStats connections, {} all connections, {} pending PIDs",
+        log::debug!("capture: {} EStats connections, {} all connections, {} pending PIDs",
             cur.len(), conns.len(), pending.len());
     }
 
@@ -132,8 +132,7 @@ impl AppUsageTracker {
             .filter(|s| s.upload_bytes + s.download_bytes > 0)
             .collect();
 
-        log::info!(
-            "flush: {} samples, total {}",
+        log::info!("flush: {} samples, total {}",
             samples.len(),
             crate::monitor::aggregator::format_bytes(samples.iter().map(|s| s.upload_bytes + s.download_bytes).sum::<u64>())
         );
@@ -301,7 +300,7 @@ fn tcp_snapshot() -> TcpSnapshot {
         }
     }
 
-    log::info!("tcp_snapshot: {count} IPv4 rows, {estats_ok} EStats ok, {estats_skip} skipped, {total} total tracked",
+    log::debug!("tcp_snapshot: {count} IPv4 rows, {estats_ok} EStats ok, {estats_skip} skipped, {total} total tracked",
         total = all_keys.len());
     TcpSnapshot { estats, all_keys }
 }
@@ -370,7 +369,7 @@ fn tcp6_snapshot() -> TcpSnapshot {
         }
     }
 
-    log::info!("tcp6_snapshot: {count} IPv6 rows, {estats_ok} EStats ok, {estats_skip} skipped, {total} total tracked",
+    log::debug!("tcp6_snapshot: {count} IPv6 rows, {estats_ok} EStats ok, {estats_skip} skipped, {total} total tracked",
         total = all_keys.len());
     TcpSnapshot { estats, all_keys }
 }
