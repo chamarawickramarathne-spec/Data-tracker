@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const rootDir = path.resolve(__dirname, '..');
 const targetDir = path.join(rootDir, 'releases');
@@ -76,6 +77,24 @@ if (copied === 0) {
   if (newestX64) {
     fs.copyFileSync(path.join(targetDir, newestX64), path.join(targetDir, 'DataTrackerSetup.exe'));
     console.log('Site asset refreshed: DataTrackerSetup.exe');
+  }
+
+  // Publish machine-readable checksums for the self-update payloads.
+  const sha256 = (file) =>
+    crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const payloads = ['data-tracker-x64.exe', 'data-tracker-x86.exe', 'data-tracker.exe'];
+  const sums = [];
+  for (const name of payloads) {
+    const file = path.join(targetDir, name);
+    if (fs.existsSync(file)) {
+      sums.push(`${sha256(file)}  ${name}`);
+    }
+  }
+  if (sums.length > 0) {
+    fs.writeFileSync(path.join(targetDir, 'SHA256SUMS.txt'), sums.join('\n') + '\n');
+    console.log('Wrote SHA256SUMS.txt');
+  } else {
+    console.warn('No payloads found; skipped SHA256SUMS.txt');
   }
 
   console.log(`Done. Copied ${copied} file(s) to releases/`);

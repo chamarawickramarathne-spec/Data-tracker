@@ -1,10 +1,17 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.3.2
+## Current Version: 1.3.3
 
 ---
 
 ## Completed
+
+### Mod 1.3.3 - Reliable release-based self-update (SHA256SUMS.txt)
+- `fetch_release_checksum` rewritten: primary source is a machine-readable `SHA256SUMS.txt` release asset; fallback scans the rendered release page for `SHA256-<arch>:` / `SHA256:` followed by a complete 64-hex digest (HTML-wrapper tolerant)
+- `copy-releases.cjs` now generates `SHA256SUMS.txt` (sha256sum format) for both arch payloads + legacy alias
+- Root cause fixed: prior line-prefix parser rejected GitHub's `<p>/<br>/</p>`-wrapped body lines (x86 always failed; plain `SHA256:` used by ≤1.3.0 clients always failed)
+- Version bumped 1.3.2 → 1.3.3
+- Note: clients ≤1.3.2 cannot self-update unsigned builds; 1.3.3 requires one manual install, then in-app updates work
 
 ### Mod 1.3.2 - Fix update check for unsigned builds
 - Restored legacy `data-tracker.exe` (x64) alias in `copy-releases.cjs`; back-patched v1.3.1 release

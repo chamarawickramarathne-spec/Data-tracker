@@ -188,17 +188,39 @@ fn verify_version_format(version: &str) -> Result<(), String> {
 }
 
 fn fetch_release_checksum(version: &str, arch: &str) -> Result<String, String> {
-    // Fetch the release body and look for an architecture-specific checksum
-    // line like: SHA256-x64: <hex>. A plain SHA256: line is accepted as a
-    // fallback for releases that publish a single architecture.
-    let url = format!("https://github.com/{}/releases/tag/v{}", UPDATE_REPO, version);
     let client = reqwest::blocking::Client::builder()
         .timeout(REQUEST_TIMEOUT)
         .user_agent("DataTracker-update-check")
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
+
+    // Primary source: a machine-readable SHA256SUMS.txt published as a release
+    // asset (sha256sum format). This is unambiguous and immune to HTML markup.
+    let sums_url = format!(
+        "https://github.com/{}/releases/download/v{}/SHA256SUMS.txt",
+        UPDATE_REPO, version
+    );
+    if let Ok(resp) = client.get(&sums_url).send() {
+        if resp.status().is_success() {
+            if let Ok(text) = resp.text() {
+                if let Some(hex) = parse_checksum_file(&text, &update_exe_name(), arch) {
+                    return Ok(hex);
+                }
+                log::warn!(
+                    "SHA256SUMS.txt present but contained no checksum for {}",
+                    update_exe_name()
+                );
+            }
+        }
+    }
+
+    // Fallback: scan the rendered release page. The body text is wrapped in
+    // HTML (<p>/<br>/</p>), so match an architecture-specific label first
+    // (SHA256-x64: / SHA256-x86:) then a plain SHA256: line, and take the
+    // first complete 64-character hex digest that follows.
+    let page_url = format!("https://github.com/{}/releases/tag/v{}", UPDATE_REPO, version);
     let response = client
-        .get(&url)
+        .get(&page_url)
         .send()
         .map_err(|e| format!("Failed to fetch release checksum: {e}"))?;
     if !response.status().is_success() {
@@ -209,20 +231,54 @@ fn fetch_release_checksum(version: &str, arch: &str) -> Result<String, String> {
         .map_err(|e| format!("Failed to read release body: {e}"))?;
 
     let arch_prefix = format!("SHA256-{}:", arch);
-    let mut fallback: Option<String> = None;
-    for line in body.lines() {
-        let trimmed = line.trim();
-        if let Some(hex) = trimmed.strip_prefix(&arch_prefix) {
-            if let Some(hex) = normalize_hex(hex) {
-                return Ok(hex);
-            }
-        } else if let Some(hex) = trimmed.strip_prefix("SHA256:") {
-            if fallback.is_none() {
-                fallback = normalize_hex(hex);
-            }
+    if let Some(hex) = extract_hex_after(&body, &arch_prefix) {
+        return Ok(hex);
+    }
+    if let Some(hex) = extract_hex_after(&body, "SHA256:") {
+        return Ok(hex);
+    }
+    Err("Release has no valid SHA256 checksum to verify against".to_string())
+}
+
+// Parses a sha256sum-format file ("<hex>  <filename>") and returns the digest
+// for the requested asset. A legacy "data-tracker.exe" line is accepted as an
+// x64 fallback for releases published before architecture-specific payloads.
+fn parse_checksum_file(text: &str, asset_name: &str, arch: &str) -> Option<String> {
+    let mut legacy: Option<String> = None;
+    for line in text.lines() {
+        let mut parts = line.split_whitespace();
+        let (hex, name) = match (parts.next(), parts.next()) {
+            (Some(h), Some(n)) => (h, n.trim_start_matches('*')),
+            _ => continue,
+        };
+        let hex = match normalize_hex(hex) {
+            Some(h) => h,
+            None => continue,
+        };
+        if name == asset_name {
+            return Some(hex);
+        }
+        if arch == "x64" && name == "data-tracker.exe" && legacy.is_none() {
+            legacy = Some(hex);
         }
     }
-    fallback.ok_or_else(|| "Release has no valid SHA256 checksum to verify against".to_string())
+    legacy
+}
+
+// Finds the first occurrence of `prefix` followed by a complete 64-character
+// hex digest, tolerating whitespace and surrounding HTML between them.
+fn extract_hex_after(body: &str, prefix: &str) -> Option<String> {
+    let mut search_from = 0usize;
+    while let Some(pos) = body[search_from..].find(prefix) {
+        let start = search_from + pos + prefix.len();
+        let rest = body[start..].trim_start();
+        let hex: String = rest.chars().take_while(|c| c.is_ascii_hexdigit()).collect();
+        if hex.len() == 64 {
+            return Some(hex.to_ascii_lowercase());
+        }
+        search_from = start;
+    }
+    None
 }
 
 // Accepts a trimmed 64-character hex digest and returns it lowercased.

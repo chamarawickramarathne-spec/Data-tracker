@@ -2,6 +2,39 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.3.3 - Reliable release-based self-update (v1.3.3)
+
+**Date:** 2026-10-12
+
+### What was fixed
+- **In-app self-update failed to verify the download**, so it never applied. `fetch_release_checksum` (`src-tauri/src/commands/update.rs`) fetched the GitHub release page and did a strict **line-prefix** match: a line had to *start* with `SHA256-<arch>:` (or `SHA256:`) and the rest had to be *exactly* 64 hex chars. GitHub renders the body as `<p>SHA256-x64: …<br> SHA256-x86: …<br> SHA256: …</p>`, so:
+  - **x86 → always failed** (arch line ends in `<br>`, 68 chars).
+  - **plain `SHA256:` → always failed** (ends in `</p>`, 68 chars) — this is the label used by clients ≤1.3.0.
+  - **x64 → passed only by luck**, because the `og:description` meta tag happened to contain one clean `SHA256-x64:` line.
+- **Fix — publish a machine-readable checksum asset**: `scripts/copy-releases.cjs` now generates `releases/SHA256SUMS.txt` (sha256sum format) for `data-tracker-x64.exe`, `data-tracker-x86.exe`, and the legacy `data-tracker.exe` (x64).
+- **Fix — robust lookup** (`update.rs`): `fetch_release_checksum` now
+  1. downloads `…/releases/download/v<version>/SHA256SUMS.txt` and matches the current arch's asset (`parse_checksum_file`; legacy `data-tracker.exe` accepted as x64), then
+  2. falls back to a whole-body scan of the release page that finds the first complete 64-hex digest after `SHA256-<arch>:` then `SHA256:` (`extract_hex_after`), tolerating surrounding HTML.
+  - `normalize_hex` + `verify_sha256` unchanged. Authenticode remains optional (unsigned tolerated, invalid/untrusted rejected).
+- Version bumped 1.3.2 → 1.3.3 (`package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, speedtest user-agent).
+
+### Files / Components
+- `src-tauri/src/commands/update.rs` — `fetch_release_checksum` rewritten; new `parse_checksum_file` + `extract_hex_after`
+- `scripts/copy-releases.cjs` — writes `SHA256SUMS.txt` for the self-update payloads
+- `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `src-tauri/src/commands/speedtest.rs` — version 1.3.3
+- `AGENTS_PLAN.md`, `medial_support.txt` — updated
+
+### Verified
+- `cargo check` clean (4 pre-existing dead-code warnings, no new); `tsc -b` clean; `pnpm lint` clean (pre-existing warnings only).
+- `pnpm tauri:build` (x64) + `pnpm tauri build --target i686-pc-windows-msvc` (x86) produced exe + NSIS + MSI bundles.
+- `releases/SHA256SUMS.txt` verified against the actual payload hashes; both payloads report version 1.3.3.
+
+### Security note
+- Update integrity is still enforced via SHA-256; the expected digest now comes from a dedicated release asset (with an HTML-scan fallback). Executables remain unsigned (no code-signing certificate), so Authenticode stays optional exactly as in 1.3.2.
+
+### Important notes
+- **Clients ≤1.3.2 cannot self-update** an unsigned build (1.3.0/1.3.1 require a valid Authenticode signature; 1.3.2's x86 checksum parsing fails). **v1.3.3 requires a one-time manual install**; from 1.3.3 onward, "Check for updates" downloads → SHA-256 verifies → auto-restarts for both x86 and x64.
+
 ## Mod 1.3.2 - Fix update check for unsigned builds (v1.3.2)
 
 **Date:** 2026-10-12
