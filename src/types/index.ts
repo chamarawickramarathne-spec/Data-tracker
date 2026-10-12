@@ -71,19 +71,6 @@ export interface ThemeInfo {
   isDark: boolean;
 }
 
-export interface UsageForecast {
-  dailyLimitBytes: number;
-  dailyUsedBytes: number;
-  dailyRatePerHour: number;
-  dailyHoursRemaining: number | null;
-  dailyEstimatedHit: string | null;
-  monthlyLimitBytes: number;
-  monthlyUsedBytes: number;
-  monthlyRatePerDay: number;
-  monthlyDaysRemaining: number | null;
-  monthlyEstimatedHit: string | null;
-}
-
 export interface SpeedTestResult {
   downloadMbps: number;
   uploadMbps: number;

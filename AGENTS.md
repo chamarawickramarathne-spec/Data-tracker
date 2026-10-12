@@ -2,6 +2,45 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.3.1 - Remove Usage Forecast feature (v1.3.1)
+
+**Date:** 2026-10-12
+
+### What was changed
+- **Removed the "Usage Forecast" section** from the Live Dashboard. It projected when daily/monthly data limits would be hit based on current usage rate but was judged not useful versus the existing limit alerts and Session Summary.
+- Frontend: deleted the dedicated `ForecastCard.tsx`; removed its import and render from `Dashboard.tsx`; removed the `UsageForecast` TS interface.
+- Backend: removed the `get_usage_forecast` command + `UsageForecast` struct from `commands/usage.rs`, its registration in `lib.rs`, and the now-unused `UsageForecastRow` struct + `get_today_usage_rate` / `get_monthly_usage_rate` helpers in `db/queries.rs`.
+- Version bumped 1.3.0 → 1.3.1 (`package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, speedtest user-agent).
+- **Dual-architecture release build**: added an x86 (`i686-pc-windows-msvc`) build alongside x64 to satisfy AGENTS.md §5.
+  - `scripts/copy-releases.cjs` now handles both target dirs (`target/release` = x64, `target/i686-pc-windows-msvc/release` = x86), emits per-arch self-update payloads `data-tracker-x64.exe` / `data-tracker-x86.exe`, copies both versioned installers, prunes old per-arch installers, and keeps `DataTrackerSetup.exe` mirroring the newest x64 installer.
+  - `src-tauri/src/commands/update.rs` is now architecture-aware (AGENTS.md §7.1): `arch_suffix()` maps `std::env::consts::ARCH` to `x64`/`x86`, downloads `data-tracker-<arch>.exe`, and verifies against the matching `SHA256-x64:` / `SHA256-x86:` release-body line (plain `SHA256:` still accepted as a fallback for older single-arch releases).
+
+### Files / Components
+- `src/components/dashboard/ForecastCard.tsx` — deleted
+- `src/components/dashboard/Dashboard.tsx` — removed import + render
+- `src/types/index.ts` — removed `UsageForecast`
+- `src-tauri/src/commands/usage.rs` — removed `UsageForecast` struct + `get_usage_forecast`
+- `src-tauri/src/db/queries.rs` — removed `UsageForecastRow` + `get_today_usage_rate` + `get_monthly_usage_rate`
+- `src-tauri/src/lib.rs` — unregistered `get_usage_forecast`
+- `src-tauri/src/commands/update.rs` — arch-aware download + checksum verification
+- `scripts/copy-releases.cjs` — dual-arch artifact collection
+- `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `src-tauri/src/commands/speedtest.rs` — version 1.3.1
+- `AGENTS_PLAN.md`, `medial_support.txt` — updated
+
+### Verified
+- `pnpm lint` clean (pre-existing warnings only); `tsc -b` clean; `cargo check` clean (4 pre-existing dead-code warnings, no new).
+- `pnpm tauri:build` (x64) and `pnpm tauri build --target i686-pc-windows-msvc` (x86) both produced exe + NSIS + MSI bundles.
+
+### Release (v1.3.1)
+- Tag `v1.3.1`; GitHub release `Data Tracker 1.3.1` with assets:
+  - `data-tracker-x64.exe` — SHA256 `78749AB93BDBD03CEF76F9D492DFF02057A9CB3EA997998AA9C5D7E13D234D54`
+  - `data-tracker-x86.exe` — SHA256 `D04F3FADF343ED2307A043C401EB446483B2DE2AF11EC62A30661E7FE1D88F1E`
+  - `DataTracker_1.3.1_x64-setup.exe`, `DataTracker_1.3.1_x86-setup.exe`, `DataTrackerSetup.exe`
+
+### Important notes
+- No dependency, capability, or database-schema changes were required. The `usage_snapshots` and `daily_usage` tables remain and are still used by history/peak-hours features.
+- The shipped executables are **not Authenticode-signed** (no code-signing certificate available), so the updater's `WinVerifyTrust` check will still refuse in-app self-updates; users update via the installer. SHA-256 integrity is still enforced.
+
 ## Mod 1.3.0 - Security audit remediation (v1.3.0)
 
 **Date:** 2026-09-08

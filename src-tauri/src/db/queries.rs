@@ -512,50 +512,6 @@ pub fn get_peak_hours_data(
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UsageForecastRow {
-    pub total_bytes: u64,
-    pub hours_active: f64,
-}
-
-pub fn get_today_usage_rate(conn: &Connection, date: &str) -> Result<UsageForecastRow> {
-    let row = conn.query_row(
-        "SELECT COALESCE(SUM(total_bytes), 0),
-                MAX(CAST(strftime('%H', timestamp) AS REAL) + CAST(strftime('%M', timestamp) AS REAL) / 60.0)
-                    - MIN(CAST(strftime('%H', timestamp) AS REAL) + CAST(strftime('%M', timestamp) AS REAL) / 60.0)
-         FROM usage_snapshots WHERE date(timestamp) = ?1",
-        params![date],
-        |row| {
-            Ok(UsageForecastRow {
-                total_bytes: row.get(0)?,
-                hours_active: row.get::<_, Option<f64>>(1)?.unwrap_or(0.0).max(1.0),
-            })
-        },
-    )?;
-    Ok(row)
-}
-
-pub fn get_monthly_usage_rate(conn: &Connection, year: i32, month: u32) -> Result<UsageForecastRow> {
-    let start_date = format!("{}-{:02}-01", year, month);
-    let next_month = if month == 12 { 1 } else { month + 1 };
-    let next_year = if month == 12 { year + 1 } else { year };
-    let end_date = format!("{}-{:02}-01", next_year, next_month);
-
-    let row = conn.query_row(
-        "SELECT COALESCE(SUM(total_bytes), 0),
-                MAX(CAST(strftime('%d', date) AS REAL)) - MIN(CAST(strftime('%d', date) AS REAL)) + 1
-         FROM daily_usage WHERE date >= ?1 AND date < ?2",
-        params![start_date, end_date],
-        |row| {
-            Ok(UsageForecastRow {
-                total_bytes: row.get(0)?,
-                hours_active: row.get::<_, Option<f64>>(1)?.unwrap_or(1.0).max(1.0),
-            })
-        },
-    )?;
-    Ok(row)
-}
-
 /// Purge usage records older than `retention_days`. Returns the number of
 /// rows deleted across all usage tables. Sub-second snapshots are removed
 /// based on their timestamp; rolled-up daily/monthly rows are removed when

@@ -12,7 +12,19 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 // The update repository is pinned server-side. The frontend passes a repo only
 // to select the download URL, but verification always targets this constant.
 pub const UPDATE_REPO: &str = "chamarawickramarathne-spec/Data-tracker";
-pub const UPDATE_EXE_NAME: &str = "data-tracker.exe";
+
+// Maps the running process architecture to the release asset suffix.
+fn arch_suffix() -> &'static str {
+    match std::env::consts::ARCH {
+        "x86" => "x86",
+        _ => "x64",
+    }
+}
+
+// Release asset name for this architecture, e.g. "data-tracker-x64.exe".
+fn update_exe_name() -> String {
+    format!("data-tracker-{}.exe", arch_suffix())
+}
 const GENERIC_VERIFY_V2: windows_sys::core::GUID =
     windows_sys::core::GUID::from_u128(0x00aac56b_cd44_11d0_8cc2_00c04fc295ee);
 
@@ -107,13 +119,14 @@ fn run_apply_update(version: &str) -> Result<(), String> {
     let exe_name = exe_path
         .file_name()
         .and_then(|n| n.to_str())
-        .unwrap_or(UPDATE_EXE_NAME);
+        .unwrap_or("data-tracker.exe");
     let staged = app_dir.join(format!("{}.new", exe_name));
     let script = app_dir.join("apply_update.cmd");
+    let asset_name = update_exe_name();
 
     let url = format!(
         "https://github.com/{}/releases/download/v{}/{}",
-        UPDATE_REPO, version, UPDATE_EXE_NAME
+        UPDATE_REPO, version, asset_name
     );
 
     let response = reqwest::blocking::Client::builder()
@@ -133,7 +146,7 @@ fn run_apply_update(version: &str) -> Result<(), String> {
     std::fs::write(&staged, &bytes).map_err(|e| format!("Failed to stage update: {e}"))?;
 
     // Fetch the expected SHA-256 checksum from the release body and verify it.
-    let expected_sha = fetch_release_checksum(version)?;
+    let expected_sha = fetch_release_checksum(version, arch_suffix())?;
     verify_sha256(&bytes, &expected_sha)?;
 
     // Verify the Authenticode signature of the downloaded executable.
@@ -174,8 +187,10 @@ fn verify_version_format(version: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn fetch_release_checksum(version: &str) -> Result<String, String> {
-    // Fetch the release body and look for a line like: SHA256: <hex>
+fn fetch_release_checksum(version: &str, arch: &str) -> Result<String, String> {
+    // Fetch the release body and look for an architecture-specific checksum
+    // line like: SHA256-x64: <hex>. A plain SHA256: line is accepted as a
+    // fallback for releases that publish a single architecture.
     let url = format!("https://github.com/{}/releases/tag/v{}", UPDATE_REPO, version);
     let client = reqwest::blocking::Client::builder()
         .timeout(REQUEST_TIMEOUT)
@@ -193,16 +208,31 @@ fn fetch_release_checksum(version: &str) -> Result<String, String> {
         .text()
         .map_err(|e| format!("Failed to read release body: {e}"))?;
 
+    let arch_prefix = format!("SHA256-{}:", arch);
+    let mut fallback: Option<String> = None;
     for line in body.lines() {
         let trimmed = line.trim();
-        if let Some(hex) = trimmed.strip_prefix("SHA256:") {
-            let hex = hex.trim();
-            if !hex.is_empty() && hex.len() == 64 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
-                return Ok(hex.to_ascii_lowercase());
+        if let Some(hex) = trimmed.strip_prefix(&arch_prefix) {
+            if let Some(hex) = normalize_hex(hex) {
+                return Ok(hex);
+            }
+        } else if let Some(hex) = trimmed.strip_prefix("SHA256:") {
+            if fallback.is_none() {
+                fallback = normalize_hex(hex);
             }
         }
     }
-    Err("Release has no valid SHA256 checksum to verify against".to_string())
+    fallback.ok_or_else(|| "Release has no valid SHA256 checksum to verify against".to_string())
+}
+
+// Accepts a trimmed 64-character hex digest and returns it lowercased.
+fn normalize_hex(hex: &str) -> Option<String> {
+    let hex = hex.trim();
+    if hex.len() == 64 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        Some(hex.to_ascii_lowercase())
+    } else {
+        None
+    }
 }
 
 fn verify_sha256(data: &[u8], expected_hex: &str) -> Result<(), String> {

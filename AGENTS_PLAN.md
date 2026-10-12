@@ -1,10 +1,20 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.3.0
+## Current Version: 1.3.1
 
 ---
 
 ## Completed
+
+### Mod 1.3.1 - Remove Usage Forecast feature + dual-arch release
+- Deleted `ForecastCard.tsx`; removed Dashboard import/render
+- Removed backend `get_usage_forecast` command + `UsageForecast` struct, and `UsageForecastRow` / `get_today_usage_rate` / `get_monthly_usage_rate` queries
+- Removed `UsageForecast` TS interface; unregistered command in `lib.rs`
+- Version bumped 1.3.0 → 1.3.1
+- Dual-arch build: x86 (`i686-pc-windows-msvc`) + x64
+- Arch-aware updater (`update.rs`) downloads `data-tracker-<arch>.exe`, verifies `SHA256-<arch>:` line
+- `copy-releases.cjs` emits both arch payloads + installers
+- Released tag `v1.3.1` with `data-tracker-x64.exe`, `data-tracker-x86.exe`, both installers, `DataTrackerSetup.exe`
 
 ### Mod 1.3.0 - Security audit remediation
 - **C1** Signed/checksum-verified auto-update: SHA-256 checksum + Authenticode (`WinVerifyTrust`) verification of downloaded exe before swap; repo pinned server-side; version validated against path traversal
