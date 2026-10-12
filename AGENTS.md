@@ -2,6 +2,26 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.3.4 - Dummy release to validate in-app update (v1.3.4)
+
+**Date:** 2026-10-12
+
+### What was changed
+- **No functional change.** Version-only bump 1.3.3 → 1.3.4 to produce a newer release for testing the in-app "Check for updates" flow end-to-end.
+- Confirms the v1.3.3 updater fix: install runs 1.3.3 → checks → finds 1.3.4 → downloads the arch payload → verifies via `SHA256SUMS.txt` → auto-restarts.
+- Version bumped in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `src-tauri/src/commands/speedtest.rs`.
+
+### Files / Components
+- `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `src-tauri/src/commands/speedtest.rs` — version 1.3.4
+- `AGENTS_PLAN.md` — updated
+
+### Verified
+- `pnpm tauri:build` (x64) + `pnpm tauri build --target i686-pc-windows-msvc` (x86) produced exe + NSIS + MSI bundles.
+- `releases/SHA256SUMS.txt` matches the actual payloads; both payloads report version 1.3.4.
+
+### Important notes
+- Test requires an installed **1.3.3** (clients ≤1.3.2 cannot self-update unsigned builds). From 1.3.3 onward the in-app update pulls 1.3.4 automatically.
+
 ## Mod 1.3.3 - Reliable release-based self-update (v1.3.3)
 
 **Date:** 2026-10-12

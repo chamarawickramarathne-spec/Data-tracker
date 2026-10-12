@@ -1,10 +1,14 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.3.3
+## Current Version: 1.3.4
 
 ---
 
 ## Completed
+
+### Mod 1.3.4 - Dummy release to validate in-app update
+- Version-only bump 1.3.3 → 1.3.4 (no functional change) to test the self-update flow
+- Confirms: installed 1.3.3 → "Check for updates" → finds 1.3.4 → downloads arch payload → SHA-256 verified via `SHA256SUMS.txt` → auto-restart
 
 ### Mod 1.3.3 - Reliable release-based self-update (SHA256SUMS.txt)
 - `fetch_release_checksum` rewritten: primary source is a machine-readable `SHA256SUMS.txt` release asset; fallback scans the rendered release page for `SHA256-<arch>:` / `SHA256:` followed by a complete 64-hex digest (HTML-wrapper tolerant)
