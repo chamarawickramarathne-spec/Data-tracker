@@ -2,6 +2,31 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.3.2 - Fix update check for unsigned builds (v1.3.2)
+
+**Date:** 2026-10-12
+
+### What was fixed
+- **"Check for updates" failed**: v1.3.1 renamed the self-update payload to arch-specific assets (`data-tracker-x64.exe` / `data-tracker-x86.exe`) and dropped the legacy `data-tracker.exe` asset and the plain `SHA256:` line. Older clients (≤1.3.0) still download `data-tracker.exe` and parse a plain `SHA256:` line, so they hit **HTTP 404** and showed "Check failed".
+  - Restored a legacy `data-tracker.exe` (x64) alias, now emitted by `scripts/copy-releases.cjs`.
+  - The v1.3.1 release was also back-patched server-side with `data-tracker.exe` + a plain `SHA256:` line for old clients.
+- **In-app self-update was impossible for unsigned builds**: `verify_authenticode` required a valid Authenticode signature, but the executables are not signed, so every update was refused. It now **tolerates a missing signature** (falls back to SHA-256 integrity) while still **rejecting a signature that is present but invalid or untrusted** (`is_unsigned()` checks `TRUST_E_NOSIGNATURE` / `TRUST_E_SUBJECT_FORM_UNKNOWN` / `TRUST_E_PROVIDER_UNKNOWN`).
+- Version bumped 1.3.1 → 1.3.2 (`package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, speedtest user-agent).
+
+### Files / Components
+- `src-tauri/src/commands/update.rs` — optional Authenticode (`is_unsigned`), warn + proceed for unsigned; arch-aware download retained
+- `scripts/copy-releases.cjs` — emits legacy `data-tracker.exe` (x64 alias) alongside arch payloads
+- `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `src-tauri/src/commands/speedtest.rs` — version 1.3.2
+- `AGENTS_PLAN.md` — updated
+
+### Security note
+- Signature verification is now enforced only when a signature exists; integrity is still enforced via the SHA-256 checksum published in the release body. This relaxation is required because the project has no code-signing certificate (user-approved decision).
+
+### Important notes
+- Clients on ≤1.3.0 still cannot self-update (their built-in check is strict) and need a one-time manual install of 1.3.2.
+- From 1.3.2 onward, in-app self-update works for unsigned releases (SHA-256 verified).
+- Dual-arch build retained: `data-tracker-x64.exe`, `data-tracker-x86.exe`, `DataTracker_1.3.2_x64-setup.exe`, `DataTracker_1.3.2_x86-setup.exe`, `DataTrackerSetup.exe`.
+
 ## Mod 1.3.1 - Remove Usage Forecast feature (v1.3.1)
 
 **Date:** 2026-10-12

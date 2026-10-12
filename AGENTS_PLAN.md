@@ -1,10 +1,15 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.3.1
+## Current Version: 1.3.2
 
 ---
 
 ## Completed
+
+### Mod 1.3.2 - Fix update check for unsigned builds
+- Restored legacy `data-tracker.exe` (x64) alias in `copy-releases.cjs`; back-patched v1.3.1 release
+- Made Authenticode verification optional: unsigned payloads allowed (SHA-256 still enforced); invalid/untrusted signatures still rejected
+- Version bumped 1.3.1 → 1.3.2
 
 ### Mod 1.3.1 - Remove Usage Forecast feature + dual-arch release
 - Deleted `ForecastCard.tsx`; removed Dashboard import/render

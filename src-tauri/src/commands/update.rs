@@ -292,23 +292,7 @@ fn verify_authenticode(path: &std::path::Path) -> Result<(), String> {
         )
     };
 
-    if result != 0i32 {
-        if data.hWVTStateData != std::ptr::null_mut() {
-            unsafe {
-                data.dwStateAction = WTD_STATEACTION_CLOSE;
-                WinVerifyTrust(
-                    std::ptr::null_mut(),
-                    &mut action,
-                    &mut data as *mut WINTRUST_DATA as *mut c_void,
-                );
-            }
-        }
-        return Err(format!(
-            "Downloaded update failed Authenticode signature verification (0x{:08X}); update aborted",
-            result as u32
-        ));
-    }
-
+    // Always release the trust state handle before branching on the result.
     if data.hWVTStateData != std::ptr::null_mut() {
         unsafe {
             data.dwStateAction = WTD_STATEACTION_CLOSE;
@@ -320,5 +304,34 @@ fn verify_authenticode(path: &std::path::Path) -> Result<(), String> {
         }
     }
 
-    Ok(())
+    if result == 0 {
+        return Ok(());
+    }
+
+    // This project ships unsigned executables (no code-signing certificate).
+    // A missing signature is tolerated so that SHA-256-verified updates can
+    // still be applied. A signature that is present but invalid or untrusted
+    // is always rejected.
+    if is_unsigned(result) {
+        log::warn!(
+            "Downloaded update is not Authenticode-signed (0x{:08X}); relying on SHA-256 verification",
+            result as u32
+        );
+        return Ok(());
+    }
+
+    Err(format!(
+        "Downloaded update failed Authenticode signature verification (0x{:08X}); update aborted",
+        result as u32
+    ))
+}
+
+// WinVerifyTrust error codes that indicate no signature is present at all.
+fn is_unsigned(result: i32) -> bool {
+    const TRUST_E_NOSIGNATURE: i32 = 0x800B0100u32 as i32;
+    const TRUST_E_SUBJECT_FORM_UNKNOWN: i32 = 0x800B0003u32 as i32;
+    const TRUST_E_PROVIDER_UNKNOWN: i32 = 0x800B0001u32 as i32;
+    result == TRUST_E_NOSIGNATURE
+        || result == TRUST_E_SUBJECT_FORM_UNKNOWN
+        || result == TRUST_E_PROVIDER_UNKNOWN
 }

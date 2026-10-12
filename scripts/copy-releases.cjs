@@ -26,6 +26,10 @@ for (const [arch, base] of Object.entries(targets)) {
   const exe = path.join(base, 'release', 'data-tracker.exe');
   if (fs.existsSync(exe)) {
     copyFile(exe, path.join(targetDir, `data-tracker-${arch}.exe`));
+    // Legacy alias expected by older clients (x64 build).
+    if (arch === 'x64') {
+      copyFile(exe, path.join(targetDir, 'data-tracker.exe'));
+    }
   } else {
     console.warn(`[${arch}] exe not found: ${exe}`);
   }
