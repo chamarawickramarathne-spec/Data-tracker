@@ -74,6 +74,12 @@ This file is the modification memory for the Data Tracker application. Every cha
 - The `selected_adapter` setting remains unused; adapter choice is automatic (default route, then fastest physical link).
 - Autostart now points to `C:\Users\Nwick\AppData\Local\DataTracker\data-tracker.exe` (1.3.5).
 
+### Release (v1.3.5)
+- Tag `v1.3.5`; GitHub release `Data Tracker 1.3.5` at `https://github.com/chamarawickramarathne-spec/Data-tracker/releases/tag/v1.3.5`.
+- Assets: `data-tracker-x64.exe`, `data-tracker-x86.exe`, legacy `data-tracker.exe` (x64), `DataTracker_1.3.5_x64-setup.exe`, `DataTracker_1.3.5_x86-setup.exe`, `DataTrackerSetup.exe`, `SHA256SUMS.txt`.
+- Anonymous downloads verified HTTP 200; `/releases/latest` redirects to `v1.3.5`.
+- The installers are unsigned; integrity is enforced with SHA-256.
+
 ## Mod 1.3.4 - Dummy release to validate in-app update (v1.3.4)
 
 **Date:** 2026-10-12

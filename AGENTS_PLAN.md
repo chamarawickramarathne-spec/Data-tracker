@@ -173,7 +173,7 @@
 
 ## Pending
 
-- Commit, tag, and publish the release after explicit approval.
+- None. v1.3.5 is committed, tagged, pushed, and published at `https://github.com/chamarawickramarathne-spec/Data-tracker/releases/tag/v1.3.5`.
 
 ---
 
