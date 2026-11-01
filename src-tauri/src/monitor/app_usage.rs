@@ -17,8 +17,20 @@ struct TcpSnapshot {
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum ConnKey {
-    V4 { pid: u32, la: u32, lp: u32, ra: u32, rp: u32 },
-    V6 { pid: u32, la: [u8; 16], lp: u32, ra: [u8; 16], rp: u32 },
+    V4 {
+        pid: u32,
+        la: u32,
+        lp: u32,
+        ra: u32,
+        rp: u32,
+    },
+    V6 {
+        pid: u32,
+        la: [u8; 16],
+        lp: u32,
+        ra: [u8; 16],
+        rp: u32,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -96,13 +108,20 @@ impl AppUsageTracker {
             }
         }
 
-        *prev = cur.iter().map(|(k, &(_, bi, bo))| (k.clone(), (bi, bo))).collect();
+        *prev = cur
+            .iter()
+            .map(|(k, &(_, bi, bo))| (k.clone(), (bi, bo)))
+            .collect();
 
         let mut conns = self.all_conns.lock().unwrap();
         *conns = all_keys;
 
-        log::debug!("capture: {} EStats connections, {} all connections, {} pending PIDs",
-            cur.len(), conns.len(), pending.len());
+        log::debug!(
+            "capture: {} EStats connections, {} all connections, {} pending PIDs",
+            cur.len(),
+            conns.len(),
+            pending.len()
+        );
     }
 
     pub fn flush(&self) -> Vec<AppUsageSample> {
@@ -125,16 +144,25 @@ impl AppUsageTracker {
             .into_iter()
             .filter(|(pid, _)| *pid != 0)
             .map(|(pid, (in_bytes, out_bytes))| AppUsageSample {
-                app_name: names.get(&pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                app_name: names
+                    .get(&pid)
+                    .cloned()
+                    .unwrap_or_else(|| "Unknown".to_string()),
                 download_bytes: in_bytes,
                 upload_bytes: out_bytes,
             })
             .filter(|s| s.upload_bytes + s.download_bytes > 0)
             .collect();
 
-        log::info!("flush: {} samples, total {}",
+        log::info!(
+            "flush: {} samples, total {}",
             samples.len(),
-            crate::monitor::aggregator::format_bytes(samples.iter().map(|s| s.upload_bytes + s.download_bytes).sum::<u64>())
+            crate::monitor::aggregator::format_bytes(
+                samples
+                    .iter()
+                    .map(|s| s.upload_bytes + s.download_bytes)
+                    .sum::<u64>()
+            )
         );
         samples
     }
@@ -172,7 +200,10 @@ impl AppUsageTracker {
             .into_iter()
             .filter(|(pid, _)| *pid != 0)
             .map(|(pid, (in_bytes, out_bytes))| AppSpeedEntry {
-                app_name: names.get(&pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                app_name: names
+                    .get(&pid)
+                    .cloned()
+                    .unwrap_or_else(|| "Unknown".to_string()),
                 download_speed: in_bytes,
                 upload_speed: out_bytes,
                 total_speed: in_bytes + out_bytes,
@@ -212,7 +243,10 @@ impl AppUsageTracker {
                 let share = count as f64 / total_conns as f64;
                 let total = (adapter_total_speed as f64 * share) as u64;
                 AppSpeedEntry {
-                    app_name: names.get(&pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                    app_name: names
+                        .get(&pid)
+                        .cloned()
+                        .unwrap_or_else(|| "Unknown".to_string()),
                     download_speed: total / 2,
                     upload_speed: total / 2,
                     total_speed: total,
@@ -244,7 +278,14 @@ fn tcp_snapshot() -> TcpSnapshot {
 
     let mut size: u32 = 0;
     unsafe {
-        GetExtendedTcpTable(std::ptr::null_mut(), &mut size, 0, AF_INET as u32, TCP_TABLE_OWNER_PID_ALL, 0);
+        GetExtendedTcpTable(
+            std::ptr::null_mut(),
+            &mut size,
+            0,
+            AF_INET as u32,
+            TCP_TABLE_OWNER_PID_ALL,
+            0,
+        );
     }
     if size == 0 {
         log::info!("tcp_snapshot: no IPv4 TCP table");
@@ -281,11 +322,19 @@ fn tcp_snapshot() -> TcpSnapshot {
             continue;
         }
 
-        let key = ConnKey::V4 { pid: row.dwOwningPid, la: row.dwLocalAddr, lp: row.dwLocalPort, ra: row.dwRemoteAddr, rp: row.dwRemotePort };
+        let key = ConnKey::V4 {
+            pid: row.dwOwningPid,
+            la: row.dwLocalAddr,
+            lp: row.dwLocalPort,
+            ra: row.dwRemoteAddr,
+            rp: row.dwRemotePort,
+        };
         all_keys.insert(key.clone(), row.dwOwningPid);
 
         let tcp_row = MIB_TCPROW_LH {
-            Anonymous: MIB_TCPROW_LH_0 { dwState: row.dwState },
+            Anonymous: MIB_TCPROW_LH_0 {
+                dwState: row.dwState,
+            },
             dwLocalAddr: row.dwLocalAddr,
             dwLocalPort: row.dwLocalPort,
             dwRemoteAddr: row.dwRemoteAddr,
@@ -311,7 +360,14 @@ fn tcp6_snapshot() -> TcpSnapshot {
 
     let mut size: u32 = 0;
     unsafe {
-        GetExtendedTcpTable(std::ptr::null_mut(), &mut size, 0, AF_INET6 as u32, TCP_TABLE_OWNER_PID_ALL, 0);
+        GetExtendedTcpTable(
+            std::ptr::null_mut(),
+            &mut size,
+            0,
+            AF_INET6 as u32,
+            TCP_TABLE_OWNER_PID_ALL,
+            0,
+        );
     }
     if size == 0 {
         log::info!("tcp6_snapshot: no IPv6 TCP table");
@@ -348,7 +404,13 @@ fn tcp6_snapshot() -> TcpSnapshot {
             continue;
         }
 
-        let key = ConnKey::V6 { pid: row.dwOwningPid, la: row.ucLocalAddr, lp: row.dwLocalPort, ra: row.ucRemoteAddr, rp: row.dwRemotePort };
+        let key = ConnKey::V6 {
+            pid: row.dwOwningPid,
+            la: row.ucLocalAddr,
+            lp: row.dwLocalPort,
+            ra: row.ucRemoteAddr,
+            rp: row.dwRemotePort,
+        };
         all_keys.insert(key.clone(), row.dwOwningPid);
 
         let tcp6_row = MIB_TCP6ROW {
@@ -375,10 +437,19 @@ fn tcp6_snapshot() -> TcpSnapshot {
 }
 
 fn tcp_byte_counters(row: &MIB_TCPROW_LH) -> Option<(u64, u64)> {
-    let rw = TCP_ESTATS_DATA_RW_v0 { EnableCollection: 1 };
+    let rw = TCP_ESTATS_DATA_RW_v0 {
+        EnableCollection: 1,
+    };
     let rw_size = mem::size_of::<TCP_ESTATS_DATA_RW_v0>();
     let set_ret = unsafe {
-        SetPerTcpConnectionEStats(row, TcpConnectionEstatsData, &rw as *const _ as *const u8, 0, rw_size as u32, 0)
+        SetPerTcpConnectionEStats(
+            row,
+            TcpConnectionEstatsData,
+            &rw as *const _ as *const u8,
+            0,
+            rw_size as u32,
+            0,
+        )
     };
     if set_ret != 0 {
         log::warn!("SetPerTcpConnectionEStats failed: {set_ret}");
@@ -388,10 +459,17 @@ fn tcp_byte_counters(row: &MIB_TCPROW_LH) -> Option<(u64, u64)> {
     let rod_size = mem::size_of::<TcpEstatsDataRod>();
     let ret = unsafe {
         GetPerTcpConnectionEStats(
-            row, TcpConnectionEstatsData,
-            std::ptr::null_mut(), 0, 0,
-            std::ptr::null_mut(), 0, 0,
-            &mut rod as *mut _ as *mut u8, 0, rod_size as u32,
+            row,
+            TcpConnectionEstatsData,
+            std::ptr::null_mut(),
+            0,
+            0,
+            std::ptr::null_mut(),
+            0,
+            0,
+            &mut rod as *mut _ as *mut u8,
+            0,
+            rod_size as u32,
         )
     };
     if ret != 0 {
@@ -402,10 +480,19 @@ fn tcp_byte_counters(row: &MIB_TCPROW_LH) -> Option<(u64, u64)> {
 }
 
 fn tcp6_byte_counters(row: &MIB_TCP6ROW) -> Option<(u64, u64)> {
-    let rw = TCP_ESTATS_DATA_RW_v0 { EnableCollection: 1 };
+    let rw = TCP_ESTATS_DATA_RW_v0 {
+        EnableCollection: 1,
+    };
     let rw_size = mem::size_of::<TCP_ESTATS_DATA_RW_v0>();
     let set_ret = unsafe {
-        SetPerTcp6ConnectionEStats(row, TcpConnectionEstatsData, &rw as *const _ as *const u8, 0, rw_size as u32, 0)
+        SetPerTcp6ConnectionEStats(
+            row,
+            TcpConnectionEstatsData,
+            &rw as *const _ as *const u8,
+            0,
+            rw_size as u32,
+            0,
+        )
     };
     if set_ret != 0 {
         log::warn!("SetPerTcp6ConnectionEStats failed: {set_ret}");
@@ -415,10 +502,17 @@ fn tcp6_byte_counters(row: &MIB_TCP6ROW) -> Option<(u64, u64)> {
     let rod_size = mem::size_of::<TcpEstatsDataRod>();
     let ret = unsafe {
         GetPerTcp6ConnectionEStats(
-            row, TcpConnectionEstatsData,
-            std::ptr::null_mut(), 0, 0,
-            std::ptr::null_mut(), 0, 0,
-            &mut rod as *mut _ as *mut u8, 0, rod_size as u32,
+            row,
+            TcpConnectionEstatsData,
+            std::ptr::null_mut(),
+            0,
+            0,
+            std::ptr::null_mut(),
+            0,
+            0,
+            &mut rod as *mut _ as *mut u8,
+            0,
+            rod_size as u32,
         )
     };
     if ret != 0 {

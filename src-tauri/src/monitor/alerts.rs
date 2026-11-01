@@ -59,9 +59,13 @@ fn enforce_retention(app: &AppHandle, last_purge_day: &mut String) {
     }
     *last_purge_day = today;
 
-    let Some(db) = app.try_state::<crate::db::DbState>() else { return };
+    let Some(db) = app.try_state::<crate::db::DbState>() else {
+        return;
+    };
     let Ok(conn) = db.0.lock() else { return };
-    let Ok(settings) = crate::db::queries::get_settings(&conn) else { return };
+    let Ok(settings) = crate::db::queries::get_settings(&conn) else {
+        return;
+    };
     match crate::db::queries::purge_old_usage(&conn, settings.data_retention_days) {
         Ok(deleted) => log::info!("Scheduled data retention cleanup removed {deleted} old rows"),
         Err(e) => log::warn!("Scheduled data retention cleanup failed: {e}"),
@@ -75,15 +79,23 @@ fn check_limits(app: &AppHandle, state: &Mutex<AlertState>) {
     let year = now.year();
     let month = now.month();
 
-    let Some(db) = app.try_state::<crate::db::DbState>() else { return };
+    let Some(db) = app.try_state::<crate::db::DbState>() else {
+        return;
+    };
     let Ok(conn) = db.0.lock() else { return };
-    let Ok(settings) = crate::db::queries::get_settings(&conn) else { return };
+    let Ok(settings) = crate::db::queries::get_settings(&conn) else {
+        return;
+    };
     if !settings.notifications_enabled {
         return;
     }
 
-    let Ok(day) = crate::db::queries::get_daily_usage(&conn, &today) else { return };
-    let Ok(month_usage) = crate::db::queries::get_monthly_usage(&conn, year, month) else { return };
+    let Ok(day) = crate::db::queries::get_daily_usage(&conn, &today) else {
+        return;
+    };
+    let Ok(month_usage) = crate::db::queries::get_monthly_usage(&conn, year, month) else {
+        return;
+    };
 
     let mut alert_sent = false;
     {
@@ -116,7 +128,9 @@ fn check_limits(app: &AppHandle, state: &Mutex<AlertState>) {
                         format!(
                             "{} of {} used today ({:.0}% of your daily limit)",
                             crate::monitor::aggregator::format_bytes(day.total_bytes),
-                            crate::monitor::aggregator::format_bytes(settings.daily_limit_bytes as u64),
+                            crate::monitor::aggregator::format_bytes(
+                                settings.daily_limit_bytes as u64
+                            ),
                             day.total_bytes as f64 / settings.daily_limit_bytes as f64 * 100.0,
                         ),
                     );
@@ -151,8 +165,11 @@ fn check_limits(app: &AppHandle, state: &Mutex<AlertState>) {
                         format!(
                             "{} of {} used this month ({:.0}% of your monthly limit)",
                             crate::monitor::aggregator::format_bytes(month_usage.total_bytes),
-                            crate::monitor::aggregator::format_bytes(settings.monthly_limit_bytes as u64),
-                            month_usage.total_bytes as f64 / settings.monthly_limit_bytes as f64 * 100.0,
+                            crate::monitor::aggregator::format_bytes(
+                                settings.monthly_limit_bytes as u64
+                            ),
+                            month_usage.total_bytes as f64 / settings.monthly_limit_bytes as f64
+                                * 100.0,
                         ),
                     );
                 }
@@ -169,9 +186,13 @@ fn check_daily_summary(app: &AppHandle, state: &Mutex<AlertState>) {
     let now = chrono::Local::now();
     let today = now.format("%Y-%m-%d").to_string();
 
-    let Some(db) = app.try_state::<crate::db::DbState>() else { return };
+    let Some(db) = app.try_state::<crate::db::DbState>() else {
+        return;
+    };
     let Ok(conn) = db.0.lock() else { return };
-    let Ok(settings) = crate::db::queries::get_settings(&conn) else { return };
+    let Ok(settings) = crate::db::queries::get_settings(&conn) else {
+        return;
+    };
     if !settings.notifications_enabled || !settings.daily_summary_enabled {
         return;
     }
@@ -180,8 +201,12 @@ fn check_daily_summary(app: &AppHandle, state: &Mutex<AlertState>) {
     if parts.len() != 2 {
         return;
     }
-    let Ok(hour) = parts[0].trim().parse::<u32>() else { return };
-    let Ok(minute) = parts[1].trim().parse::<u32>() else { return };
+    let Ok(hour) = parts[0].trim().parse::<u32>() else {
+        return;
+    };
+    let Ok(minute) = parts[1].trim().parse::<u32>() else {
+        return;
+    };
     let now_minutes = now.hour() * 60 + now.minute();
     if now_minutes < hour * 60 + minute {
         return;
@@ -195,7 +220,9 @@ fn check_daily_summary(app: &AppHandle, state: &Mutex<AlertState>) {
         s.summary_date = today.clone();
     }
 
-    let Ok(day) = crate::db::queries::get_daily_usage(&conn, &today) else { return };
+    let Ok(day) = crate::db::queries::get_daily_usage(&conn, &today) else {
+        return;
+    };
     let _ = send_alert(
         app,
         "Daily usage summary",
@@ -223,7 +250,11 @@ fn crossed(total: u64, limit: u64, warning_pct: i32, danger_pct: i32) -> Option<
     }
 }
 
-fn send_alert(app: &AppHandle, title: &str, body: String) -> Result<(), tauri_plugin_notification::Error> {
+fn send_alert(
+    app: &AppHandle,
+    title: &str,
+    body: String,
+) -> Result<(), tauri_plugin_notification::Error> {
     app.notification().builder().title(title).body(&body).show()
 }
 

@@ -33,7 +33,28 @@ pub fn run() {
 
             std::fs::create_dir_all(db_path.parent().unwrap()).ok();
 
-            let db = db::init_database(&db_path).expect("failed to init database");
+            let mut db = db::init_database(&db_path).expect("failed to init database");
+
+            match db::repair::repair_history(&mut db, &db_path) {
+                Ok(report) if report.repaired => log::info!(
+                    "History repaired: backup={:?}, snapshots_removed={}, app_rows_removed={}, snapshots_reattributed={}, snapshots_deduped={}, daily={}, monthly={}, daily_app={}, monthly_app={}",
+                    report
+                        .backup_path
+                        .as_ref()
+                        .and_then(|path| path.file_name())
+                        .and_then(|name| name.to_str()),
+                    report.deleted_snapshots,
+                    report.deleted_app_records,
+                    report.reattributed_snapshots,
+                    report.deduped_snapshots,
+                    report.rebuilt_daily_rows,
+                    report.rebuilt_monthly_rows,
+                    report.rebuilt_daily_app_rows,
+                    report.rebuilt_monthly_app_rows
+                ),
+                Ok(_) => {}
+                Err(e) => log::warn!("History repair failed: {e}"),
+            }
 
             // Apply autostart setting from database
             {
@@ -111,12 +132,15 @@ pub fn run() {
 
 fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::menu::{MenuBuilder, MenuItemBuilder};
-    use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
     let show_item = MenuItemBuilder::with_id("show", "Show Window").build(app)?;
     let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
-    let menu = MenuBuilder::new(app).item(&show_item).item(&quit_item).build()?;
+    let menu = MenuBuilder::new(app)
+        .item(&show_item)
+        .item(&quit_item)
+        .build()?;
 
     let _tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
@@ -136,19 +160,17 @@ fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         })
-        .on_menu_event(|app, event| {
-            match event.id().as_ref() {
-                "show" => {
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "show" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
                 }
-                "quit" => {
-                    app.exit(0);
-                }
-                _ => {}
             }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
         })
         .build(app)?;
 

@@ -1,10 +1,29 @@
 # Data Tracker - Development Plan
 
-## Current Version: 1.3.4
+## Current Version: 1.3.5
 
 ---
 
 ## Completed
+
+### Mod 1.3.5 - Adapter spike fix + historical data repair
+- Fixed `MIB_IF_TABLE2` traversal to start at `offset_of!(MIB_IF_TABLE2, Table)` instead of `size_of::<MIB_IF_TABLE2>()`
+- Adapter selection now physical-only, LUID-stable, default-route aware, with link-speed fallback
+- Added link-speed delta plausibility guard and counter-reset/LUID-change baseline resets
+- Added one-time startup history repair with SQLite backup:
+  - removes >1 TiB and negative snapshot/app rows
+  - re-attributes QoS/WFP/LightWeight/Endpoint snapshots to the physical base alias
+  - deduplicates normalized snapshots
+  - rebuilds daily/monthly adapter and app rollups in one transaction
+- Added `rusqlite` `backup` feature
+- Version bumped 1.3.4 → 1.3.5
+- Tests: 8/8 pass (`cargo test --lib`)
+- Lint/typecheck/build pass (`pnpm lint`, `npx tsc -b`, `pnpm build`)
+- Dual-arch release builds + NSIS/MSI bundles produced for x64 and x86
+- `releases/` updated with both payloads, both 1.3.5 NSIS installers, site asset, and `SHA256SUMS.txt`
+- Live DB repair applied on first 1.3.5 launch: 2 snapshots + 27 app rows removed, 54,204 filter snapshots re-attributed, rollups rebuilt; backup `datatracker.db.bak-20261101-202628`
+- x64 NSIS installer tested silently; installed app launches as 1.3.5 and repair is idempotent
+- Autostart points to `C:\Users\Nwick\AppData\Local\DataTracker\data-tracker.exe`
 
 ### Mod 1.3.4 - Dummy release to validate in-app update
 - Version-only bump 1.3.3 → 1.3.4 (no functional change) to test the self-update flow
@@ -154,7 +173,7 @@
 
 ## Pending
 
-None. All planned features and fixes are complete.
+- Commit, tag, and publish the release after explicit approval.
 
 ---
 
@@ -162,3 +181,6 @@ None. All planned features and fixes are complete.
 
 - **v1.0.5 tag missing**: Changes were committed as part of v1.0.6. No separate tag exists.
 - **Per-app tracking limitations**: TCP only (no UDP/QUIC), sampling-based, short-lived flows undercounted.
+- **Repair scope**: rebuilds rollups from retained records; per-app rows below 1 TiB created during the 50/50 spike fallback cannot be distinguished from real usage.
+- **x86 installer not installed**: verified by build/metadata/PE machine only; installing would replace the x64 installation at the shared path.
+- **Installer UI not exercised**: x64 NSIS tested in silent mode; interactive pages were not clicked through.

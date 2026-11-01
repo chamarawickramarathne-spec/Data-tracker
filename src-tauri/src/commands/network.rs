@@ -1,7 +1,7 @@
+use crate::db::DbState;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
-use crate::db::DbState;
 
 pub struct LiveSpeed(pub Mutex<NetworkSpeed>);
 
@@ -43,13 +43,17 @@ pub fn get_current_speed(state: State<'_, LiveSpeed>) -> Result<NetworkSpeed, St
 
 #[tauri::command]
 pub fn get_adapters() -> Result<Vec<NetworkAdapter>, String> {
-    crate::monitor::adapter::get_network_adapters()
-        .map(|adapters| adapters.into_iter().map(|a| NetworkAdapter {
-            name: a.name,
-            description: a.description,
-            is_connected: a.is_connected,
-            speed: a.speed,
-        }).collect())
+    crate::monitor::adapter::get_network_adapters().map(|adapters| {
+        adapters
+            .into_iter()
+            .map(|a| NetworkAdapter {
+                name: a.name,
+                description: a.description,
+                is_connected: a.is_connected,
+                speed: a.speed,
+            })
+            .collect()
+    })
 }
 
 #[tauri::command]

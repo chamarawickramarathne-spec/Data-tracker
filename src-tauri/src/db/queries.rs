@@ -1,6 +1,6 @@
-use crate::db::{UserSettings};
+use crate::db::UserSettings;
 use chrono::Datelike;
-use rusqlite::{Connection, Result, params};
+use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,7 +168,14 @@ pub fn upsert_daily_usage(
             total_bytes = total_bytes + excluded.total_bytes,
             peak_upload_speed = MAX(peak_upload_speed, excluded.peak_upload_speed),
             peak_download_speed = MAX(peak_download_speed, excluded.peak_download_speed)",
-        params![date, adapter_name, upload_bytes, download_bytes, upload_speed, download_speed],
+        params![
+            date,
+            adapter_name,
+            upload_bytes,
+            download_bytes,
+            upload_speed,
+            download_speed
+        ],
     )?;
     Ok(())
 }
@@ -193,7 +200,15 @@ pub fn upsert_monthly_usage(
             total_bytes = total_bytes + excluded.total_bytes,
             peak_upload_speed = MAX(peak_upload_speed, excluded.peak_upload_speed),
             peak_download_speed = MAX(peak_download_speed, excluded.peak_download_speed)",
-        params![year, month as i32, adapter_name, upload_bytes, download_bytes, upload_speed, download_speed],
+        params![
+            year,
+            month as i32,
+            adapter_name,
+            upload_bytes,
+            download_bytes,
+            upload_speed,
+            download_speed
+        ],
     )?;
     Ok(())
 }
@@ -210,8 +225,15 @@ pub fn insert_snapshot(
     conn.execute(
         "INSERT INTO usage_snapshots (timestamp, adapter_name, upload_bytes, download_bytes,
          total_bytes, upload_speed_bps, download_speed_bps) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![timestamp, adapter_name, upload_bytes, download_bytes,
-                upload_bytes + download_bytes, upload_speed, download_speed],
+        params![
+            timestamp,
+            adapter_name,
+            upload_bytes,
+            download_bytes,
+            upload_bytes + download_bytes,
+            upload_speed,
+            download_speed
+        ],
     )?;
     Ok(())
 }
@@ -295,7 +317,11 @@ pub fn get_daily_app_breakdown(conn: &Connection, date: &str) -> Result<Vec<AppU
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-pub fn get_monthly_app_breakdown(conn: &Connection, year: i32, month: u32) -> Result<Vec<AppUsageSummaryRow>> {
+pub fn get_monthly_app_breakdown(
+    conn: &Connection,
+    year: i32,
+    month: u32,
+) -> Result<Vec<AppUsageSummaryRow>> {
     let mut stmt = conn.prepare(
         "SELECT app_name, upload_bytes, download_bytes, total_bytes,
                 CASE WHEN (SELECT SUM(total_bytes) FROM monthly_app_usage WHERE year = ?1 AND month = ?2) > 0
@@ -318,7 +344,11 @@ pub fn get_monthly_app_breakdown(conn: &Connection, year: i32, month: u32) -> Re
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-pub fn get_usage_history(conn: &Connection, start_date: &str, end_date: &str) -> Result<Vec<DailyCalendarRow>> {
+pub fn get_usage_history(
+    conn: &Connection,
+    start_date: &str,
+    end_date: &str,
+) -> Result<Vec<DailyCalendarRow>> {
     let mut stmt = conn.prepare(
         "SELECT date, COALESCE(SUM(total_bytes), 0)
          FROM daily_usage WHERE date BETWEEN ?1 AND ?2
@@ -355,7 +385,11 @@ pub fn get_hourly_breakdown(conn: &Connection, date: &str) -> Result<Vec<HourlyB
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-pub fn get_daily_breakdown_for_month(conn: &Connection, year: i32, month: u32) -> Result<Vec<DailyBreakdownRow>> {
+pub fn get_daily_breakdown_for_month(
+    conn: &Connection,
+    year: i32,
+    month: u32,
+) -> Result<Vec<DailyBreakdownRow>> {
     let start_date = format!("{}-{:02}-01", year, month);
     let next_month = if month == 12 { 1 } else { month + 1 };
     let next_year = if month == 12 { year + 1 } else { year };

@@ -77,7 +77,9 @@ fn run_check_for_updates() -> Result<UpdateInfo, String> {
     let status = response.status();
 
     if !status.is_success() {
-        return Err(format!("Update server returned HTTP {status} (no releases yet?)"));
+        return Err(format!(
+            "Update server returned HTTP {status} (no releases yet?)"
+        ));
     }
 
     let final_url = response.url().clone();
@@ -86,16 +88,17 @@ fn run_check_for_updates() -> Result<UpdateInfo, String> {
         .and_then(|mut segments| segments.next_back())
         .ok_or_else(|| "Update server returned an unexpected URL".to_string())?;
     let latest = tag.strip_prefix('v').unwrap_or(tag).to_string();
-    let latest = if version_gt(&latest, &current) { Some(latest) } else { None };
+    let latest = if version_gt(&latest, &current) {
+        Some(latest)
+    } else {
+        None
+    };
 
     Ok(UpdateInfo { current, latest })
 }
 
 #[tauri::command]
-pub async fn apply_update(
-    app: tauri::AppHandle,
-    version: String,
-) -> Result<(), String> {
+pub async fn apply_update(app: tauri::AppHandle, version: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || run_apply_update(&version))
         .await
         .map_err(|e| format!("Update apply failed: {e}"))??;
@@ -114,7 +117,10 @@ fn run_apply_update(version: &str) -> Result<(), String> {
     verify_version_format(version)?;
 
     let exe = std::env::current_exe().map_err(|e| format!("Failed to locate app: {e}"))?;
-    let app_dir = exe.parent().ok_or("Failed to resolve app directory")?.to_path_buf();
+    let app_dir = exe
+        .parent()
+        .ok_or("Failed to resolve app directory")?
+        .to_path_buf();
     let exe_path = exe.as_path();
     let exe_name = exe_path
         .file_name()
@@ -218,13 +224,19 @@ fn fetch_release_checksum(version: &str, arch: &str) -> Result<String, String> {
     // HTML (<p>/<br>/</p>), so match an architecture-specific label first
     // (SHA256-x64: / SHA256-x86:) then a plain SHA256: line, and take the
     // first complete 64-character hex digest that follows.
-    let page_url = format!("https://github.com/{}/releases/tag/v{}", UPDATE_REPO, version);
+    let page_url = format!(
+        "https://github.com/{}/releases/tag/v{}",
+        UPDATE_REPO, version
+    );
     let response = client
         .get(&page_url)
         .send()
         .map_err(|e| format!("Failed to fetch release checksum: {e}"))?;
     if !response.status().is_success() {
-        return Err(format!("Failed to fetch release checksum: HTTP {}", response.status()));
+        return Err(format!(
+            "Failed to fetch release checksum: HTTP {}",
+            response.status()
+        ));
     }
     let body = response
         .text()
@@ -329,7 +341,9 @@ fn verify_authenticode(path: &std::path::Path) -> Result<(), String> {
         dwUIChoice: WTD_UI_NONE,
         fdwRevocationChecks: WTD_REVOKE_NONE,
         dwUnionChoice: WTD_CHOICE_FILE,
-        Anonymous: WINTRUST_DATA_0 { pFile: &mut file_info },
+        Anonymous: WINTRUST_DATA_0 {
+            pFile: &mut file_info,
+        },
         dwStateAction: WTD_STATEACTION_VERIFY,
         hWVTStateData: std::ptr::null_mut(),
         pwszURLReference: std::ptr::null_mut(),

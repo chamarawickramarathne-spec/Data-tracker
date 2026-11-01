@@ -1,4 +1,5 @@
 pub mod queries;
+pub mod repair;
 
 use rusqlite::{Connection, Result};
 use std::path::Path;

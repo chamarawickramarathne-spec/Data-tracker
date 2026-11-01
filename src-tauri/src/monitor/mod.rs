@@ -1,7 +1,8 @@
 pub mod adapter;
 pub mod aggregator;
-pub mod app_usage;
 pub mod alerts;
+pub mod app_usage;
+pub mod plausibility;
 
 use tauri::AppHandle;
 use tauri::Emitter;
@@ -23,6 +24,8 @@ pub async fn start_monitoring(app: AppHandle) {
 
         let mut prev_in: Option<u64> = None;
         let mut prev_out: Option<u64> = None;
+        let mut adapter_luid: Option<u64> = None;
+        let mut last_sample_at: Option<std::time::Instant> = None;
         let mut total_in: u64 = 0;
         let mut total_out: u64 = 0;
         let mut session_in: u64 = 0;
@@ -43,22 +46,84 @@ pub async fn start_monitoring(app: AppHandle) {
                 _ = tick_interval.tick() => {
                     app_usage.capture();
 
-                    if let Ok(stats) = adapter::get_adapter_stats() {
+                    if let Ok(stats) = adapter::get_adapter_stats(adapter_luid) {
+                        let now = std::time::Instant::now();
                         let current_in = stats.bytes_received;
                         let current_out = stats.bytes_sent;
+                        let mut download_speed: u64 = 0;
+                        let mut upload_speed: u64 = 0;
 
-                        let download_speed = prev_in.map(|p| current_in.saturating_sub(p)).unwrap_or(0);
-                        let upload_speed = prev_out.map(|p| current_out.saturating_sub(p)).unwrap_or(0);
+                        let adapter_changed = adapter_luid != Some(stats.luid);
+                        if adapter_changed {
+                            log::info!("Selected network adapter: {} (LUID {})", stats.name, stats.luid);
+                            prev_in = Some(current_in);
+                            prev_out = Some(current_out);
+                            adapter_luid = Some(stats.luid);
+                            last_sample_at = Some(now);
+                        } else if let (Some(pin), Some(pout), Some(sampled_at)) =
+                            (prev_in, prev_out, last_sample_at)
+                        {
+                            if current_in < pin || current_out < pout {
+                                log::info!(
+                                    "Network counters reset for {}; restarting delta baseline",
+                                    stats.name
+                                );
+                                prev_in = Some(current_in);
+                                prev_out = Some(current_out);
+                                last_sample_at = Some(now);
+                            } else {
+                                let raw_down = current_in - pin;
+                                let raw_up = current_out - pout;
+                                let elapsed_secs =
+                                    now.duration_since(sampled_at).as_secs_f64().max(0.001);
 
-                        if prev_in.is_some() {
-                            total_in += download_speed;
-                            total_out += upload_speed;
-                            session_in += download_speed;
-                            session_out += upload_speed;
+                                if plausibility::is_plausible_delta(
+                                    raw_down,
+                                    stats.receive_link_speed,
+                                    elapsed_secs,
+                                ) {
+                                    download_speed = raw_down;
+                                } else {
+                                    log::warn!(
+                                        "Discarded implausible download delta: {} bytes in {:.3}s (link {} bps, {})",
+                                        raw_down,
+                                        elapsed_secs,
+                                        stats.receive_link_speed,
+                                        stats.name
+                                    );
+                                }
+
+                                if plausibility::is_plausible_delta(
+                                    raw_up,
+                                    stats.transmit_link_speed,
+                                    elapsed_secs,
+                                ) {
+                                    upload_speed = raw_up;
+                                } else {
+                                    log::warn!(
+                                        "Discarded implausible upload delta: {} bytes in {:.3}s (link {} bps, {})",
+                                        raw_up,
+                                        elapsed_secs,
+                                        stats.transmit_link_speed,
+                                        stats.name
+                                    );
+                                }
+
+                                prev_in = Some(current_in);
+                                prev_out = Some(current_out);
+                                last_sample_at = Some(now);
+                            }
+                        } else {
+                            prev_in = Some(current_in);
+                            prev_out = Some(current_out);
+                            adapter_luid = Some(stats.luid);
+                            last_sample_at = Some(now);
                         }
 
-                        prev_in = Some(current_in);
-                        prev_out = Some(current_out);
+                        total_in += download_speed;
+                        total_out += upload_speed;
+                        session_in += download_speed;
+                        session_out += upload_speed;
                         last_download_speed = download_speed;
                         last_upload_speed = upload_speed;
                         last_adapter_name = stats.name.clone();

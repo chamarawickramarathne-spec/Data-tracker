@@ -76,10 +76,7 @@ pub struct AppDailyBreakdownEntry {
 }
 
 #[tauri::command]
-pub fn get_daily_usage(
-    db: State<'_, DbState>,
-    date: String,
-) -> Result<DailyUsage, String> {
+pub fn get_daily_usage(db: State<'_, DbState>, date: String) -> Result<DailyUsage, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_daily_usage(&conn, &date)
         .map(|row| DailyUsage {
@@ -118,13 +115,17 @@ pub fn get_daily_app_breakdown(
 ) -> Result<Vec<AppUsageSummary>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_daily_app_breakdown(&conn, &date)
-        .map(|rows| rows.into_iter().map(|r| AppUsageSummary {
-            app_name: r.app_name,
-            upload_bytes: r.upload_bytes,
-            download_bytes: r.download_bytes,
-            total_bytes: r.total_bytes,
-            percentage: r.percentage,
-        }).collect())
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| AppUsageSummary {
+                    app_name: r.app_name,
+                    upload_bytes: r.upload_bytes,
+                    download_bytes: r.download_bytes,
+                    total_bytes: r.total_bytes,
+                    percentage: r.percentage,
+                })
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }
 
@@ -136,13 +137,17 @@ pub fn get_monthly_app_breakdown(
 ) -> Result<Vec<AppUsageSummary>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_monthly_app_breakdown(&conn, year, month)
-        .map(|rows| rows.into_iter().map(|r| AppUsageSummary {
-            app_name: r.app_name,
-            upload_bytes: r.upload_bytes,
-            download_bytes: r.download_bytes,
-            total_bytes: r.total_bytes,
-            percentage: r.percentage,
-        }).collect())
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| AppUsageSummary {
+                    app_name: r.app_name,
+                    upload_bytes: r.upload_bytes,
+                    download_bytes: r.download_bytes,
+                    total_bytes: r.total_bytes,
+                    percentage: r.percentage,
+                })
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }
 
@@ -154,10 +159,14 @@ pub fn get_usage_history(
 ) -> Result<Vec<DailyCalendarEntry>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_usage_history(&conn, &start_date, &end_date)
-        .map(|rows| rows.into_iter().map(|r| DailyCalendarEntry {
-            date: r.date,
-            total_bytes: r.total_bytes,
-        }).collect())
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| DailyCalendarEntry {
+                    date: r.date,
+                    total_bytes: r.total_bytes,
+                })
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }
 
@@ -168,11 +177,15 @@ pub fn get_hourly_breakdown(
 ) -> Result<Vec<HourlyBreakdown>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_hourly_breakdown(&conn, &date)
-        .map(|rows| rows.into_iter().map(|r| HourlyBreakdown {
-            hour: r.hour,
-            upload_bytes: r.upload_bytes,
-            download_bytes: r.download_bytes,
-        }).collect())
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| HourlyBreakdown {
+                    hour: r.hour,
+                    upload_bytes: r.upload_bytes,
+                    download_bytes: r.download_bytes,
+                })
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }
 
@@ -184,12 +197,16 @@ pub fn get_daily_breakdown(
 ) -> Result<Vec<DailyBreakdownEntry>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_daily_breakdown_for_month(&conn, year, month)
-        .map(|rows| rows.into_iter().map(|r| DailyBreakdownEntry {
-            day: r.day,
-            upload_bytes: r.upload_bytes,
-            download_bytes: r.download_bytes,
-            total_bytes: r.total_bytes,
-        }).collect())
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| DailyBreakdownEntry {
+                    day: r.day,
+                    upload_bytes: r.upload_bytes,
+                    download_bytes: r.download_bytes,
+                    total_bytes: r.total_bytes,
+                })
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }
 
@@ -201,12 +218,16 @@ pub fn get_app_hourly_breakdown(
 ) -> Result<Vec<AppHourlyBreakdownEntry>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_app_hourly_breakdown(&conn, &app_name, &date)
-        .map(|rows| rows.into_iter().map(|r| AppHourlyBreakdownEntry {
-            hour: r.hour,
-            upload_bytes: r.upload_bytes,
-            download_bytes: r.download_bytes,
-            total_bytes: r.total_bytes,
-        }).collect())
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| AppHourlyBreakdownEntry {
+                    hour: r.hour,
+                    upload_bytes: r.upload_bytes,
+                    download_bytes: r.download_bytes,
+                    total_bytes: r.total_bytes,
+                })
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }
 
@@ -219,12 +240,16 @@ pub fn get_app_daily_breakdown_month(
 ) -> Result<Vec<AppDailyBreakdownEntry>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::queries::get_app_daily_breakdown_month(&conn, &app_name, year, month)
-        .map(|rows| rows.into_iter().map(|r| AppDailyBreakdownEntry {
-            day: r.day,
-            upload_bytes: r.upload_bytes,
-            download_bytes: r.download_bytes,
-            total_bytes: r.total_bytes,
-        }).collect())
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| AppDailyBreakdownEntry {
+                    day: r.day,
+                    upload_bytes: r.upload_bytes,
+                    download_bytes: r.download_bytes,
+                    total_bytes: r.total_bytes,
+                })
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }
 
@@ -249,10 +274,14 @@ pub fn get_peak_hours_heatmap(
     let end_date = format!("{}-{:02}-01", next_year, next_month);
 
     crate::db::queries::get_peak_hours_data(&conn, &start_date, &end_date)
-        .map(|rows| rows.into_iter().map(|r| PeakHourEntry {
-            day_of_week: r.day_of_week,
-            hour: r.hour,
-            total_bytes: r.total_bytes,
-        }).collect())
+        .map(|rows| {
+            rows.into_iter()
+                .map(|r| PeakHourEntry {
+                    day_of_week: r.day_of_week,
+                    hour: r.hour,
+                    total_bytes: r.total_bytes,
+                })
+                .collect()
+        })
         .map_err(|e| e.to_string())
 }

@@ -16,7 +16,11 @@ pub fn get_system_theme() -> Result<ThemeInfo, String> {
     };
 
     Ok(ThemeInfo {
-        theme: if is_dark { "dark".to_string() } else { "light".to_string() },
+        theme: if is_dark {
+            "dark".to_string()
+        } else {
+            "light".to_string()
+        },
         is_dark,
     })
 }

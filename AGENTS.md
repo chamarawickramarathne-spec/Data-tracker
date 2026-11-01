@@ -2,6 +2,78 @@
 
 This file is the modification memory for the Data Tracker application. Every change bumps a mod number and adds a new entry. Versioning starts at 1.0.0.
 
+## Mod 1.3.5 - Adapter spike fix + historical data repair (v1.3.5)
+
+**Date:** 2026-11-01
+
+### Root cause
+- `monitor/adapter.rs` walked `MIB_IF_TABLE2.Table` starting at `size_of::<MIB_IF_TABLE2>()` instead of `offset_of!(MIB_IF_TABLE2, Table)`.
+- Because `MIB_IF_TABLE2` embeds one `MIB_IF_ROW2`, the loop skipped row 0 and read one full row past the Windows buffer (1352-byte OOB read on a 24-row table).
+- The garbage row could appear connected and carry huge `InOctets`/`OutOctets`, producing a one-time 43.8 TB upload delta. The monitor also selected the "busiest" interface, including `Ethernet-QoS Packet Scheduler-0000`, with no link-speed plausibility check.
+
+### What was changed
+- **Correct enumeration** (`src-tauri/src/monitor/adapter.rs`): rows now start at `std::mem::offset_of!(MIB_IF_TABLE2, Table)`; added `offset_of + size_of::<MIB_IF_ROW2> == size_of::<MIB_IF_TABLE2>()` regression test and a 4096-row sanity cap.
+- **Physical adapter only**: selects interfaces with `HardwareInterface` set and `FilterInterface`/`EndPointInterface` clear. QoS, WFP, LightWeight Filter, and Endpoint interfaces are excluded.
+- **Stable selection**: caches the selected interface LUID, re-reads it with `GetIfEntry2`, falls back to `GetBestInterface` for the default route, then to the fastest physical link with the lowest interface index.
+- **Counter reset handling** (`src-tauri/src/monitor/mod.rs`): resets the delta baseline when the selected LUID changes or either counter decreases.
+- **Plausibility guard** (`src-tauri/src/monitor/plausibility.rs`): each 3-second delta is limited to link speed × elapsed time × 1.10 + 1 MB floor; impossible download or upload deltas are discarded and logged. Per-app fallback only receives accepted deltas.
+- **One-time history repair** (`src-tauri/src/db/repair.rs`): runs on startup before monitoring when corrupt or filter rows are detected.
+  - Creates a SQLite backup `datatracker.db.bak-YYYYMMDD-HHMMSS`; abort without changes if the backup fails.
+  - Deletes snapshot/app rows above 1 TiB or below zero.
+  - Re-attributes `-QoS Packet Scheduler-`, `-WFP `, `-LightWeight Filter-`, and `-Endpoint-` snapshot names to the physical base name instead of dropping valid usage.
+  - Deduplicates identical `(timestamp, adapter_name)` snapshots.
+  - Rebuilds `daily_usage`, `monthly_usage`, `daily_app_usage`, and `monthly_app_usage` from normalized records in one transaction.
+- Added the `backup` feature to `rusqlite` (`src-tauri/Cargo.toml`).
+- Version bumped 1.3.4 → 1.3.5 in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, and the speed-test user agent.
+
+### Files / Components
+- `src-tauri/src/monitor/adapter.rs` — correct row offset, physical filtering, LUID/default-route selection, tests
+- `src-tauri/src/monitor/plausibility.rs` — new delta validation + tests
+- `src-tauri/src/monitor/mod.rs` — LUID reset, counter-reset handling, guarded totals
+- `src-tauri/src/db/repair.rs` — new startup normalization/repair + backup + tests
+- `src-tauri/src/db/mod.rs` — registers repair module
+- `src-tauri/src/lib.rs` — runs repair before autostart/retention; logs backup filename only
+- `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` — version 1.3.5 and `rusqlite` backup feature
+- `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/src/commands/speedtest.rs` — version 1.3.5
+- `scripts/copy-releases.cjs`, `releases/` — dual-arch payloads, installers, `SHA256SUMS.txt`
+- `AGENTS.md`, `AGENTS_PLAN.md`, `medial_support.txt` — release documentation and marketing
+
+### Verified
+- `cargo test --lib`: 8/8 passed (adapter offset/selection, plausibility, repair, filter-base mapping).
+- `cargo check`: clean aside from 3 pre-existing aggregator dead-code warnings.
+- `pnpm lint`: no errors (pre-existing warnings only); `npx tsc -b` clean; `pnpm build` succeeded.
+- Dual-architecture release builds succeeded:
+  - x64: `target/release/data-tracker.exe`, NSIS `DataTracker_1.3.5_x64-setup.exe`, MSI `DataTracker_1.3.5_x64_en-US.msi`.
+  - x86: `target/i686-pc-windows-msvc/release/data-tracker.exe`, NSIS `DataTracker_1.3.5_x86-setup.exe`, MSI `DataTracker_1.3.5_x86_en-US.msi`.
+  - Both executables and both NSIS installers report FileVersion/ProductVersion 1.3.5; PE machine is x64 for the x64 payload and x86 for the x86 payload.
+- `releases/` contains `data-tracker-x64.exe`, `data-tracker-x86.exe`, legacy `data-tracker.exe` (x64), `DataTracker_1.3.5_x64-setup.exe`, `DataTracker_1.3.5_x86-setup.exe`, `DataTrackerSetup.exe`, and `SHA256SUMS.txt`.
+  - x64 payload SHA256: `07e29ca2aa065cf2f22e7e4835da7cbe86c648709a170c37a1d2ef0c7b4927f1`
+  - x86 payload SHA256: `bc03779fa7b3e55c6d649574d07220a10d9c05358b1457b86ff13e4a4c5b579d`
+  - x64 installer SHA256: `0059d53cc3ea9d8c75df3ae14d8fd5c1ce1dad1cfed80f15c8c309b95e6e54d0`
+  - x86 installer SHA256: `ce243d81557d1bacab1b006a6c2fc52a9d680cdfeba69c360d59d0e7832deb21`
+- Live DB repair was applied and verified on the first 1.3.5 launch:
+  - Backup: `datatracker.db.bak-20261101-202628` (28,807,168 bytes).
+  - Removed 2 corrupt snapshots and 27 corrupt app rows.
+  - Re-attributed 54,204 filter snapshots to `Ethernet`; deduplicated 0.
+  - Rebuilt 75 daily / 4 monthly adapter rollups and 2,119 daily / 278 monthly app rollups.
+  - Post-repair: 0 bad rows, 0 filter rows, snapshot total `451,189,800,413` bytes; Nov 1 adapter total `16,241,563,480` (upload `722,723,937`, download `15,518,839,543`); Nov 1 app total `16,241,558,166`; daily/monthly adapter both `Ethernet`.
+- The x64 NSIS installer was run silently (`exit 0`) after the 1.3.5 exe was already in place; the installed exe reports 1.3.5 and launches successfully. A second launch did not create another backup, confirming repair idempotence.
+- x86 installer was built and verified; it was not installed because it shares the same install path and would replace the x64 installation.
+
+### Security / data safety
+- Repair is transactional and backed up first; a failed backup aborts before any deletion.
+- No new network, filesystem, or privilege exposure. The repair reads only the app database and writes only its backup path.
+- The repair is idempotent: once no corrupt/filter rows remain, it does not create another backup or mutate data.
+- Repair logging emits only the backup filename, not the full user path.
+
+### Important notes
+- The repair removes corrupt spike rows and preserves valid history by re-attributing filter-interface snapshots to `Ethernet`; the pre-repair ~88 TB snapshot total is normalized to ~451 GB.
+- Per-app rows created by the 50/50 fallback during the spike cannot be separated from real usage, so spike app rows above 1 TiB are removed and app rollups are rebuilt from the remaining records.
+- The repaired Nov 1 adapter and app totals agree within a few kilobytes; remaining differences come from rows written during live verification.
+- Post-repair counts and totals continue to grow during normal monitoring; use the verification snapshot above as the fixed release check.
+- The `selected_adapter` setting remains unused; adapter choice is automatic (default route, then fastest physical link).
+- Autostart now points to `C:\Users\Nwick\AppData\Local\DataTracker\data-tracker.exe` (1.3.5).
+
 ## Mod 1.3.4 - Dummy release to validate in-app update (v1.3.4)
 
 **Date:** 2026-10-12

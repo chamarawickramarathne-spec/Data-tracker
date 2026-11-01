@@ -18,14 +18,12 @@ pub struct SpeedTestProgress {
 }
 
 #[tauri::command]
-pub async fn run_speed_test(
-    app: tauri::AppHandle,
-) -> Result<SpeedTestResult, String> {
+pub async fn run_speed_test(app: tauri::AppHandle) -> Result<SpeedTestResult, String> {
     use futures_util::StreamExt;
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
-        .user_agent("DataTracker/1.3.4")
+        .user_agent("DataTracker/1.3.5")
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -43,7 +41,13 @@ pub async fn run_speed_test(
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let latency_ms = latencies.get(latencies.len() / 2).copied().unwrap_or(0.0);
 
-    let _ = app.emit("speedtest-progress", SpeedTestProgress { phase: "download".into(), progress: 0.0 });
+    let _ = app.emit(
+        "speedtest-progress",
+        SpeedTestProgress {
+            phase: "download".into(),
+            progress: 0.0,
+        },
+    );
 
     // Download test - 25MB
     let dl_start = std::time::Instant::now();
@@ -58,12 +62,28 @@ pub async fn run_speed_test(
         let chunk = chunk.map_err(|e| format!("Download stream error: {e}"))?;
         dl_bytes += chunk.len() as u64;
         let progress = (dl_bytes as f64 / 26_214_400.0 * 100.0).min(100.0);
-        let _ = app.emit("speedtest-progress", SpeedTestProgress { phase: "download".into(), progress });
+        let _ = app.emit(
+            "speedtest-progress",
+            SpeedTestProgress {
+                phase: "download".into(),
+                progress,
+            },
+        );
     }
     let dl_elapsed = dl_start.elapsed().as_secs_f64();
-    let download_mbps = if dl_elapsed > 0.0 { (dl_bytes as f64 * 8.0) / (dl_elapsed * 1_000_000.0) } else { 0.0 };
+    let download_mbps = if dl_elapsed > 0.0 {
+        (dl_bytes as f64 * 8.0) / (dl_elapsed * 1_000_000.0)
+    } else {
+        0.0
+    };
 
-    let _ = app.emit("speedtest-progress", SpeedTestProgress { phase: "upload".into(), progress: 0.0 });
+    let _ = app.emit(
+        "speedtest-progress",
+        SpeedTestProgress {
+            phase: "upload".into(),
+            progress: 0.0,
+        },
+    );
 
     // Upload test - 25MB
     let upload_data = vec![0u8; 26_214_400];
@@ -76,9 +96,19 @@ pub async fn run_speed_test(
         .map_err(|e| format!("Upload failed: {e}"))?;
     let _ = ul_response.bytes().await;
     let ul_elapsed = ul_start.elapsed().as_secs_f64();
-    let upload_mbps = if ul_elapsed > 0.0 { (26_214_400.0 * 8.0) / (ul_elapsed * 1_000_000.0) } else { 0.0 };
+    let upload_mbps = if ul_elapsed > 0.0 {
+        (26_214_400.0 * 8.0) / (ul_elapsed * 1_000_000.0)
+    } else {
+        0.0
+    };
 
-    let _ = app.emit("speedtest-progress", SpeedTestProgress { phase: "done".into(), progress: 100.0 });
+    let _ = app.emit(
+        "speedtest-progress",
+        SpeedTestProgress {
+            phase: "done".into(),
+            progress: 100.0,
+        },
+    );
 
     Ok(SpeedTestResult {
         download_mbps: (download_mbps * 100.0).round() / 100.0,
